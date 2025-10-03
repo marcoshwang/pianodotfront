@@ -1,0 +1,241 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const SettingsScreen = ({ settings, triggerVibration, styles, updateSetting, fontSizeConfig, contrastConfig, setCurrentScreen }) => {
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión? Esto eliminará todas tus partituras, progreso y configuraciones guardadas.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Limpiar todos los datos almacenados
+              await AsyncStorage.clear();
+              triggerVibration();
+              // Navegar de vuelta al home
+              setCurrentScreen('home');
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert('Error', 'No se pudo cerrar la sesión correctamente');
+            }
+          },
+        },
+      ]
+    );
+  };
+  return (
+    <ScrollView 
+      style={styles.content} 
+      contentContainerStyle={{ 
+        flexGrow: 1, 
+        justifyContent: 'flex-start', 
+        alignItems: 'stretch', 
+        width: '100%', 
+        paddingHorizontal: 10,
+        paddingTop: 10, 
+        paddingBottom: 20
+      }}
+      showsVerticalScrollIndicator={true}
+      indicatorStyle="default"
+      scrollIndicatorInsets={{ right: 1 }}
+    >
+      {/* Sección de Tamaño */}
+      <View style={styles.settingsSection}>
+        <Text style={styles.sectionTitle}>TAMAÑO DE TEXTO Y BOTONES</Text>
+        
+        <View style={{ justifyContent: 'center' }}>
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.fontSize === 'normal' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('fontSize', 'normal');
+            }}
+            accessibilityLabel="Tamaño normal"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tamaño normal para texto y botones"
+          >
+            <Text style={[styles.optionText, settings.fontSize === 'normal' && styles.selectedOptionText]}>
+              NORMAL
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.fontSize === 'large' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('fontSize', 'large');
+            }}
+            accessibilityLabel="Tamaño grande"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tamaño grande para texto y botones"
+          >
+            <Text style={[styles.optionText, settings.fontSize === 'large' && styles.selectedOptionText]}>
+              GRANDE
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.fontSize === 'extraLarge' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('fontSize', 'extraLarge');
+            }}
+            accessibilityLabel="Tamaño extra grande"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tamaño extra grande para texto y botones"
+          >
+            <Text style={[styles.optionText, settings.fontSize === 'extraLarge' && styles.selectedOptionText]}>
+              EXTRA GRANDE
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Sección de Contraste */}
+      <View style={styles.settingsSection}>
+        <Text style={styles.sectionTitle}>CONTRASTE DE COLORES</Text>
+        
+        <View style={{ justifyContent: 'center' }}>
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.contrast === 'whiteBlack' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('contrast', 'whiteBlack');
+            }}
+            accessibilityLabel="Tema claro"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tema claro con contraste blanco y negro"
+          >
+            <Text style={[styles.optionText, settings.contrast === 'whiteBlack' && styles.selectedOptionText]}>
+              TEMA CLARO
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.contrast === 'blackWhite' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('contrast', 'blackWhite');
+            }}
+            accessibilityLabel="Tema oscuro"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tema oscuro con contraste negro y blanco"
+          >
+            <Text style={[styles.optionText, settings.contrast === 'blackWhite' && styles.selectedOptionText]}>
+              TEMA OSCURO
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.contrast === 'blackYellow' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('contrast', 'blackYellow');
+            }}
+            accessibilityLabel="Tema de alto contraste amarillo"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tema de alto contraste amarillo"
+          >
+            <Text style={[styles.optionText, settings.contrast === 'blackYellow' && styles.selectedOptionText]}>
+              TEMA CONTRASTE AMARILLO
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.contrast === 'blackBlue' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('contrast', 'blackBlue');
+            }}
+            accessibilityLabel="Tema de alto contraste azul"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tema de alto contraste azul"
+          >
+            <Text style={[styles.optionText, settings.contrast === 'blackBlue' && styles.selectedOptionText]}>
+              TEMA CONTRASTE AZUL
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.contrast === 'blackGreen' && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('contrast', 'blackGreen');
+            }}
+            accessibilityLabel="Tema de alto contraste verde"
+            accessibilityRole="button"
+            accessibilityHint="Seleccionar tema de alto contraste verde"
+          >
+            <Text style={[styles.optionText, settings.contrast === 'blackGreen' && styles.selectedOptionText]}>
+              TEMA CONTRASTE VERDE
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Sección de Vibración */}
+      <View style={styles.settingsSection}>
+        <Text style={styles.sectionTitle}>VIBRACIÓN</Text>
+        
+        <View style={{ justifyContent: 'center' }}>
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.vibration === true && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('vibration', true);
+            }}
+            accessibilityLabel="Activar vibración"
+            accessibilityRole="button"
+            accessibilityHint="Activar vibración al tocar botones"
+          >
+            <Text style={[styles.optionText, settings.vibration === true && styles.selectedOptionText]}>
+              ACTIVADA
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.optionButton, settings.vibration === false && styles.selectedOption]}
+            onPress={() => {
+              triggerVibration();
+              updateSetting('vibration', false);
+            }}
+            accessibilityLabel="Desactivar vibración"
+            accessibilityRole="button"
+            accessibilityHint="Desactivar vibración al tocar botones"
+          >
+            <Text style={[styles.optionText, settings.vibration === false && styles.selectedOptionText]}>
+              DESACTIVADA
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Sección de Cerrar Sesión */}
+      <View style={styles.settingsSection}>
+        <View style={{ justifyContent: 'center' }}>
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            accessibilityLabel="Cerrar sesión"
+            accessibilityRole="button"
+            accessibilityHint="Cerrar sesión y eliminar todos los datos guardados"
+          >
+            <Text style={styles.logoutButtonText}>
+              CERRAR SESIÓN
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
+export default SettingsScreen;
