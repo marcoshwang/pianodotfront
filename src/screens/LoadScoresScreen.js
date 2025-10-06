@@ -96,8 +96,7 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
         console.error('❌ Error type:', error.constructor.name);
         console.error('❌ Error message:', error.message);
         console.error('❌ Error stack:', error.stack);
-        setUploadError(error.message);
-        Alert.alert('Error', `No se pudo subir la partitura: ${error.message}`);
+        setUploadError(null);
       } finally {
         console.log('🏁 Finalizando upload...');
         setUploading(false);

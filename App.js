@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTextToSpeech } from './src/hooks/useTextToSpeech';
 import { useSettings } from './src/hooks/useSettings';
+import { PracticeProvider } from './src/context/PracticeContext';
 import SettingsScreen from './src/screens/SettingsScreen';
 import LoadScoresScreen from './src/screens/LoadScoresScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -109,6 +110,10 @@ export default function App() {
     return null;
   }
 
-  return <PianoDotApp />;
+  return (
+    <PracticeProvider>
+      <PianoDotApp />
+    </PracticeProvider>
+  );
 }
 
