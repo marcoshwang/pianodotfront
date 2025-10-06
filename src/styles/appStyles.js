@@ -1209,7 +1209,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     // Estilos para el popup mejorado
     statusTitle: {
       fontSize: (sizeConfig.textSize || 16) * 1.5,
-      fontWeight: '700',
+      fontFamily: 'Fredoka_700Bold',
       color: currentTheme === 'whiteBlack' ? '#FFFFFF' : contrastConfig.textColor,
       textAlign: 'center',
       marginTop: 25,
@@ -1219,12 +1219,12 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     statusSubtext: {
       fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_400Regular',
       color: currentTheme === 'whiteBlack' ? '#FFFFFF' : contrastConfig.subtitleColor,
       textAlign: 'center',
       marginBottom: 35,
       lineHeight: (sizeConfig.textSize || 16) * 1.8,
       paddingHorizontal: 20,
-      fontWeight: '400',
     },
     
     okButton: {
@@ -1247,7 +1247,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     okButtonText: {
       color: contrastConfig.textColor,
       fontSize: sizeConfig.buttonText || 18,
-      fontWeight: '600',
+      fontFamily: 'Fredoka_600SemiBold',
       letterSpacing: 0.5,
     },
   });
