@@ -7,11 +7,11 @@ import {
   Image,
 } from 'react-native';
 
-const WelcomeLandingScreen = ({ styles, triggerVibration, stop, setCurrentScreen, settings }) => {
+const WelcomeLandingScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const handleStart = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('auth');
+    navigation.navigate('Auth');
   };
 
   return (

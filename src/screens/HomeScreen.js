@@ -7,23 +7,23 @@ import {
   Image,
 } from 'react-native';
 
-const HomeScreen = ({ styles, triggerVibration, stop, setCurrentScreen, settings }) => {
+const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const handleLoadScores = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('load');
+    navigation.navigate('LoadScores');
   };
 
   const handleMyScores = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('my');
+    navigation.navigate('MyScores');
   };
 
   const handleSettings = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('settings');
+    navigation.navigate('Settings');
   };
 
   // Función para determinar si necesita separar el texto según el tamaño
