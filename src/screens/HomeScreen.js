@@ -5,9 +5,27 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
+  BackHandler,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
+  // Prevenir que el botón back de Android salga de la aplicación cuando estemos en HomeScreen
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Retornar true significa que interceptamos el evento y no permitimos la acción por defecto
+        // Esto previene que el usuario salga de la app usando el botón back
+        return true;
+      };
+
+      // Agregar el listener cuando la pantalla está enfocada
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      // Limpiar el listener cuando la pantalla pierde el foco
+      return () => subscription?.remove();
+    }, [])
+  );
   const handleLoadScores = () => {
     triggerVibration();
     stop();

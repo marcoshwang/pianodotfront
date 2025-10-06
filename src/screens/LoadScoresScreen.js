@@ -9,7 +9,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LoadScoresScreen = ({ styles, triggerVibration, stop, setCurrentScreen, setSelectedScore }) => {
+const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop, setSelectedScore }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
 
   const handleFileUpload = async () => {
@@ -60,7 +60,7 @@ const LoadScoresScreen = ({ styles, triggerVibration, stop, setCurrentScreen, se
         if (selectedFiles.length > 0) {
           const firstFile = selectedFiles[0];
           setSelectedScore(firstFile);
-          setCurrentScreen('scoreDetail');
+          navigation.navigate('ScoreDetail');
         }
       } catch (error) {
         console.error('Error al guardar archivos:', error);
@@ -77,7 +77,7 @@ const LoadScoresScreen = ({ styles, triggerVibration, stop, setCurrentScreen, se
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('home');
+    navigation.navigate('Home');
   };
 
   return (

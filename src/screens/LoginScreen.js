@@ -19,7 +19,7 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
     triggerVibration();
     stop();
     // Por ahora navegamos directamente al home, después se implementará la autenticación
-    navigation.navigate('Home');
+    navigation.replace('Home'); // replace, no navigate
   };
 
   const handleRegister = () => {

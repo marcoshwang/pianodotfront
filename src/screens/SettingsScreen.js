@@ -23,14 +23,14 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
           style: 'destructive',
           onPress: async () => {
             try {
-              // Limpiar todos los datos almacenados
               await AsyncStorage.clear();
               triggerVibration();
-              // Navegar de vuelta al home
-              navigation.navigate('Home');
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Welcome' }],
+              });
             } catch (error) {
               console.error('Error al cerrar sesión:', error);
-              Alert.alert('Error', 'No se pudo cerrar la sesión correctamente');
             }
           },
         },

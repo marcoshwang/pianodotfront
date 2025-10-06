@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-const RegisterScreen = ({ styles, triggerVibration, stop, setCurrentScreen, settings }) => {
+const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
@@ -20,13 +20,13 @@ const RegisterScreen = ({ styles, triggerVibration, stop, setCurrentScreen, sett
     triggerVibration();
     stop();
     // Por ahora navegamos directamente al home, después se implementará el registro
-    setCurrentScreen('home');
+    navigation.replace('Home');
   };
 
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('login');
+    navigation.goBack();
   };
 
   return (

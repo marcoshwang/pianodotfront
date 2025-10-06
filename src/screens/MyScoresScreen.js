@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const MyScoresScreen = ({ styles, triggerVibration, stop, setCurrentScreen, setSelectedScore }) => {
+const MyScoresScreen = ({ navigation, styles, triggerVibration, stop, setSelectedScore }) => {
   const [savedScores, setSavedScores] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,13 +35,13 @@ const MyScoresScreen = ({ styles, triggerVibration, stop, setCurrentScreen, setS
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('home');
+    navigation.navigate('Home');
   };
 
   const handlePlayScore = (score) => {
     triggerVibration();
     setSelectedScore(score);
-    setCurrentScreen('scoreDetail');
+    navigation.navigate('ScoreDetail');
   };
 
   const handleDeleteScore = async (scoreIndex) => {

@@ -7,16 +7,16 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTextToSpeech } from './src/hooks/useTextToSpeech';
 import { useSettings } from './src/hooks/useSettings';
 import SettingsScreen from './src/screens/SettingsScreen';
-// import LoadScoresScreen from './src/screens/LoadScoresScreen';
+import LoadScoresScreen from './src/screens/LoadScoresScreen';
 import HomeScreen from './src/screens/HomeScreen';
-// import MyScoresScreen from './src/screens/MyScoresScreen';
+import MyScoresScreen from './src/screens/MyScoresScreen';
 // import ScoreDetailScreen from './src/screens/ScoreDetailScreen';
 // import PianoScreen from './src/screens/PianoScreen';
 // import ControlsScreen from './src/screens/ControlsScreen';
 import WelcomeLandingScreen from './src/screens/WelcomeLandingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import LoginScreen from './src/screens/LoginScreen';
-// import RegisterScreen from './src/screens/RegisterScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
 
 // React Navigation configurado correctamente
 import { getDynamicStyles } from './src/styles/appStyles';
@@ -66,8 +66,17 @@ function PianoDotApp() {
           <Stack.Screen name="Login">
             {(props) => <LoginScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
           </Stack.Screen>
+          <Stack.Screen name="Register">
+            {(props) => <RegisterScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+          </Stack.Screen>
           <Stack.Screen name="Home">
             {(props) => <HomeScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+          </Stack.Screen>
+          <Stack.Screen name="LoadScores">
+            {(props) => <LoadScoresScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} setSelectedScore={setSelectedScore} />}
+          </Stack.Screen>
+          <Stack.Screen name="MyScores">
+            {(props) => <MyScoresScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} setSelectedScore={setSelectedScore} />}
           </Stack.Screen>
           <Stack.Screen name="Settings">
             {(props) => <SettingsScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} updateSetting={updateSetting} fontSizeConfig={fontSizeConfig} contrastConfig={contrastConfig} />}
