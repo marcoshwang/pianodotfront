@@ -15,7 +15,7 @@ import HomeScreen from './src/screens/HomeScreen';
 // import ControlsScreen from './src/screens/ControlsScreen';
 import WelcomeLandingScreen from './src/screens/WelcomeLandingScreen';
 import AuthScreen from './src/screens/AuthScreen';
-// import LoginScreen from './src/screens/LoginScreen';
+import LoginScreen from './src/screens/LoginScreen';
 // import RegisterScreen from './src/screens/RegisterScreen';
 
 // React Navigation configurado correctamente
@@ -62,6 +62,9 @@ function PianoDotApp() {
           </Stack.Screen>
           <Stack.Screen name="Auth">
             {(props) => <AuthScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+          </Stack.Screen>
+          <Stack.Screen name="Login">
+            {(props) => <LoginScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
           </Stack.Screen>
           <Stack.Screen name="Home">
             {(props) => <HomeScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}

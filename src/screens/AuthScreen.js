@@ -18,7 +18,7 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
     triggerVibration();
     stop();
     // Por ahora navegamos directamente al home, después se implementará la autenticación
-    navigation.navigate('Home');
+    navigation.replace('Home'); // replace para no poder volver atrás
   };
 
   return (
