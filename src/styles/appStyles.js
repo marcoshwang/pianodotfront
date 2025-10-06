@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 // Función para obtener estilos dinámicos
-export const getDynamicStyles = (sizeConfig, contrastConfig) => {
+export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
   return StyleSheet.create({
     // Estilos principales de la aplicación
     appContainer: {
@@ -455,13 +455,13 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     actionButton: {
       backgroundColor: contrastConfig.buttonColor,
       borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 30,
+      paddingVertical: sizeConfig.buttonPadding * 15,
       paddingHorizontal: 20,
       marginVertical: 15,
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
-      minHeight: sizeConfig.buttonText * 6,
+      minHeight: '80%',
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -1165,15 +1165,15 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     // Estilos para popup de estado
     statusPopup: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
       justifyContent: 'center',
       alignItems: 'center',
     },
     
     statusPopupContent: {
-      backgroundColor: '#FFFFFF',
+      backgroundColor: currentTheme === 'whiteBlack' ? '#000000' : contrastConfig.buttonColor,
       borderRadius: 30,
-      padding: 50,
+      padding: 60,
       margin: 40,
       alignItems: 'center',
       shadowColor: '#000',
@@ -1186,8 +1186,9 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
       elevation: 20,
       minWidth: 350,
       maxWidth: 420,
+      minHeight: 300,
       borderWidth: 2,
-      borderColor: '#E0E0E0',
+      borderColor: contrastConfig.borderColor || '#E0E0E0',
     },
     
     retryButton: {
@@ -1209,7 +1210,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     statusTitle: {
       fontSize: (sizeConfig.textSize || 16) * 1.5,
       fontWeight: '700',
-      color: '#2C3E50',
+      color: currentTheme === 'whiteBlack' ? '#FFFFFF' : contrastConfig.textColor,
       textAlign: 'center',
       marginTop: 25,
       marginBottom: 15,
@@ -1218,21 +1219,22 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     
     statusSubtext: {
       fontSize: sizeConfig.textSize || 16,
-      color: '#7F8C8D',
+      color: currentTheme === 'whiteBlack' ? '#FFFFFF' : contrastConfig.subtitleColor,
       textAlign: 'center',
       marginBottom: 35,
-      lineHeight: (sizeConfig.textSize || 16) * 1.4,
+      lineHeight: (sizeConfig.textSize || 16) * 1.8,
       paddingHorizontal: 20,
+      fontWeight: '400',
     },
     
     okButton: {
-      backgroundColor: contrastConfig.buttonColor,
+      backgroundColor: currentTheme === 'whiteBlack' ? '#808080' : '#000000',
       borderRadius: 25,
       paddingVertical: 18,
       paddingHorizontal: 60,
       minWidth: 200,
       alignItems: 'center',
-      shadowColor: contrastConfig.buttonColor,
+      shadowColor: currentTheme === 'whiteBlack' ? '#808080' : '#000000',
       shadowOffset: {
         width: 0,
         height: 4,

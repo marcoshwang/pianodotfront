@@ -100,7 +100,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <View style={styles.content}>
         {/* Progreso guardado */}
         {progress && (
           <View style={styles.progressInfo}>
@@ -149,33 +149,33 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </View>
 
-      {/* Contenedor del popup de estado de procesamiento */}
-      {showStatus && (isProcessing || predictionsLoading) && (
-        <View style={styles.popupContainer}>
-          <View style={styles.statusPopup}>
-            <View style={styles.statusPopupContent}>
-              <ActivityIndicator size="large" color="#FF9500" />
-              <Text style={styles.statusTitle}>Realizando proceso de conversión</Text>
-              <Text style={styles.statusSubtext}>Por favor espera mientras procesamos tu partitura...</Text>
-              
-              <TouchableOpacity
-                style={styles.okButton}
-                onPress={() => {
-                  setShowStatus(false);
-                  // Si está lista, navegar
-                  if (isReady) {
-                    navigation.navigate('Piano', { score });
-                  }
-                }}
-              >
-                <Text style={styles.okButtonText}>OK</Text>
-              </TouchableOpacity>
+          {/* Contenedor del popup de estado de procesamiento */}
+          {showStatus && (isProcessing || predictionsLoading) && (
+            <View style={styles.popupContainer}>
+              <View style={styles.statusPopup}>
+                <View style={styles.statusPopupContent}>
+                  <ActivityIndicator size="large" color="#FF9500" />
+                  <Text style={styles.statusTitle}>Realizando proceso de conversión</Text>
+                  <Text style={styles.statusSubtext}>Por favor espera mientras procesamos tu partitura...</Text>
+                  
+                  <TouchableOpacity
+                    style={styles.okButton}
+                    onPress={() => {
+                      setShowStatus(false);
+                      // Si está lista, navegar
+                      if (isReady) {
+                        navigation.navigate('Piano', { score });
+                      }
+                    }}
+                  >
+                    <Text style={styles.okButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      )}
+          )}
     </SafeAreaView>
   );
 };

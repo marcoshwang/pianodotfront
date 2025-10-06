@@ -41,7 +41,7 @@ function PianoDotApp() {
   const getStyles = () => {
     const sizeConfig = getCurrentSizeConfig();
     const contrastConfig = getCurrentContrastConfig();
-    return getDynamicStyles(sizeConfig, contrastConfig);
+    return getDynamicStyles(sizeConfig, contrastConfig, settings.contrast);
   };
 
 
@@ -79,7 +79,7 @@ function PianoDotApp() {
             {(props) => <MyScoresScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} />}
           </Stack.Screen>
           <Stack.Screen name="ScoreDetail">
-            {(props) => <ScoreDetailScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+            {(props) => <ScoreDetailScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} contrastConfig={contrastConfig} />}
           </Stack.Screen>
           <Stack.Screen name="Piano">
             {(props) => <PianoScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} getCurrentSizeConfig={getCurrentSizeConfig} getCurrentContrastConfig={getCurrentContrastConfig} />}
