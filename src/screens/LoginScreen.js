@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-const LoginScreen = ({ styles, triggerVibration, stop, setCurrentScreen, settings }) => {
+const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -19,19 +19,19 @@ const LoginScreen = ({ styles, triggerVibration, stop, setCurrentScreen, setting
     triggerVibration();
     stop();
     // Por ahora navegamos directamente al home, después se implementará la autenticación
-    setCurrentScreen('home');
+    navigation.replace('Home'); // replace, no navigate
   };
 
   const handleRegister = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('register');
+    navigation.navigate('Register');
   };
 
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('auth');
+    navigation.goBack();
   };
 
   return (

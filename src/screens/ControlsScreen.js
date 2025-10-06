@@ -6,11 +6,12 @@ import {
   SafeAreaView,
 } from 'react-native';
 
-const ControlsScreen = ({ styles, triggerVibration, stop, setCurrentScreen, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
+const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
+  const score = route.params?.score;
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('piano');
+    navigation.goBack();
   };
 
   const handleButtonPress = (buttonNumber) => {

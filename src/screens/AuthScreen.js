@@ -7,18 +7,18 @@ import {
   Image,
 } from 'react-native';
 
-const AuthScreen = ({ styles, triggerVibration, stop, setCurrentScreen, settings }) => {
+const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const handleEmailAuth = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('login');
+    navigation.navigate('Login');
   };
 
   const handleGoogleAuth = () => {
     triggerVibration();
     stop();
     // Por ahora navegamos directamente al home, después se implementará la autenticación
-    setCurrentScreen('home');
+    navigation.replace('Home'); // replace para no poder volver atrás
   };
 
   return (

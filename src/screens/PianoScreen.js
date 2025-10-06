@@ -8,16 +8,17 @@ import {
   ScrollView,
 } from 'react-native';
 
-const PianoScreen = ({ styles, triggerVibration, stop, setCurrentScreen, selectedScore, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
+const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
+  const score = route.params?.score;
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('scoreDetail');
+    navigation.goBack();
   };
 
   const handleControls = () => {
     triggerVibration();
-    setCurrentScreen('controls');
+    navigation.navigate('Controls', { score });
   };
 
   // Función para determinar si necesita separar el texto según el tamaño
@@ -42,7 +43,7 @@ const PianoScreen = ({ styles, triggerVibration, stop, setCurrentScreen, selecte
   const contrastConfig = getCurrentContrastConfig();
 
 
-  if (!selectedScore) {
+  if (!score) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
