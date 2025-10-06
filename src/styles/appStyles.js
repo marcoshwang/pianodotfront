@@ -455,13 +455,13 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     actionButton: {
       backgroundColor: contrastConfig.buttonColor,
       borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 3,
+      paddingVertical: sizeConfig.buttonPadding * 30,
       paddingHorizontal: 20,
       marginVertical: 15,
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
-      minHeight: sizeConfig.buttonText * 4,
+      minHeight: sizeConfig.buttonText * 6,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -980,6 +980,273 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
       textAlign: 'center',
       letterSpacing: 1,
       lineHeight: sizeConfig.buttonText * 0.9 * 1.2,
+    },
+
+    // Estilos para popup de upload
+    uploadPopup: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    
+    uploadPopupContent: {
+      backgroundColor: contrastConfig.backgroundColor,
+      borderRadius: 20,
+      padding: 30,
+      alignItems: 'center',
+      minWidth: 280,
+      maxWidth: '90%',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    
+    uploadPopupTitle: {
+      fontSize: sizeConfig.titleSize,
+      fontWeight: 'bold',
+      color: contrastConfig.textColor,
+      textAlign: 'center',
+      marginTop: 15,
+      marginBottom: 10,
+    },
+    
+    uploadPopupMessage: {
+      fontSize: sizeConfig.textSize,
+      color: contrastConfig.subtitleColor,
+      textAlign: 'center',
+      lineHeight: sizeConfig.textSize * 1.4,
+    },
+
+    // Estilos para ScoreDetailScreen con predicciones
+    scoreInfoContainer: {
+      backgroundColor: contrastConfig.cardBackground,
+      borderRadius: 15,
+      padding: 20,
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    
+    scoreTitle: {
+      fontSize: sizeConfig.titleSize,
+      fontWeight: 'bold',
+      color: contrastConfig.textColor,
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    
+    scoreSubtitle: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      color: contrastConfig.subtitleColor,
+      textAlign: 'center',
+      fontStyle: 'italic',
+      marginBottom: 15,
+    },
+    
+    statusContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 15,
+      padding: 10,
+      backgroundColor: contrastConfig.backgroundColor,
+      borderRadius: 10,
+    },
+    
+    statusText: {
+      fontSize: sizeConfig.textSize || 16,
+      color: contrastConfig.textColor,
+      marginLeft: 8,
+      fontWeight: '500',
+    },
+    
+    statusSubtext: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      color: contrastConfig.subtitleColor,
+      marginLeft: 8,
+      fontStyle: 'italic',
+    },
+    
+    readyStatusText: {
+      fontSize: sizeConfig.textSize || 16,
+      color: '#34C759',
+      fontWeight: 'bold',
+    },
+    
+    errorStatusText: {
+      fontSize: sizeConfig.textSize || 16,
+      color: '#FF3B30',
+      fontWeight: 'bold',
+    },
+    
+    detailsContainer: {
+      marginBottom: 15,
+    },
+    
+    detailsTitle: {
+      fontSize: sizeConfig.textSize || 16,
+      fontWeight: 'bold',
+      color: contrastConfig.textColor,
+      marginBottom: 8,
+    },
+    
+    detailText: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      color: contrastConfig.subtitleColor,
+      marginBottom: 4,
+      lineHeight: (sizeConfig.textSize || 16) * 1.3,
+    },
+    
+    predictionsContainer: {
+      marginBottom: 15,
+    },
+    
+    predictionsTitle: {
+      fontSize: sizeConfig.textSize || 16,
+      fontWeight: 'bold',
+      color: contrastConfig.textColor,
+      marginBottom: 8,
+    },
+    
+    predictionItem: {
+      backgroundColor: contrastConfig.backgroundColor,
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 5,
+    },
+    
+    predictionText: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      color: contrastConfig.textColor,
+      lineHeight: (sizeConfig.textSize || 16) * 1.2,
+    },
+    
+    refreshButton: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 10,
+      padding: 12,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    
+    refreshButtonText: {
+      color: contrastConfig.textColor,
+      fontSize: (sizeConfig.buttonText || 18) * 0.9,
+      fontWeight: 'bold',
+    },
+    
+    // Contenedor del popup
+    popupContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1000,
+    },
+    
+    // Estilos para popup de estado
+    statusPopup: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    
+    statusPopupContent: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 30,
+      padding: 50,
+      margin: 40,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 10,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 20,
+      elevation: 20,
+      minWidth: 350,
+      maxWidth: 420,
+      borderWidth: 2,
+      borderColor: '#E0E0E0',
+    },
+    
+    retryButton: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 15,
+      minWidth: 120,
+      alignItems: 'center',
+    },
+    
+    retryButtonText: {
+      color: contrastConfig.textColor,
+      fontSize: sizeConfig.buttonText || 18,
+      fontWeight: 'bold',
+    },
+    
+    // Estilos para el popup mejorado
+    statusTitle: {
+      fontSize: (sizeConfig.textSize || 16) * 1.5,
+      fontWeight: '700',
+      color: '#2C3E50',
+      textAlign: 'center',
+      marginTop: 25,
+      marginBottom: 15,
+      letterSpacing: 0.5,
+    },
+    
+    statusSubtext: {
+      fontSize: sizeConfig.textSize || 16,
+      color: '#7F8C8D',
+      textAlign: 'center',
+      marginBottom: 35,
+      lineHeight: (sizeConfig.textSize || 16) * 1.4,
+      paddingHorizontal: 20,
+    },
+    
+    okButton: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 25,
+      paddingVertical: 18,
+      paddingHorizontal: 60,
+      minWidth: 200,
+      alignItems: 'center',
+      shadowColor: contrastConfig.buttonColor,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    
+    okButtonText: {
+      color: contrastConfig.textColor,
+      fontSize: sizeConfig.buttonText || 18,
+      fontWeight: '600',
+      letterSpacing: 0.5,
     },
   });
 };

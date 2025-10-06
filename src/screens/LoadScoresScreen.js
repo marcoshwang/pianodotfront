@@ -5,12 +5,16 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uploadPartitura, testUploadEndpoint, testPostConnectivity, testPartiturasPostEndpoint } from '../../services/pianodotApi';
 
 const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   const handleFileUpload = async () => {
     triggerVibration();
@@ -39,30 +43,67 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
   };
 
   const handleConfirmUpload = async () => {
+    console.log('🎯 Iniciando handleConfirmUpload...');
     triggerVibration();
+    
     if (selectedFiles.length > 0) {
+      console.log('✅ Archivos seleccionados:', selectedFiles.length);
       try {
-        console.log('Confirmando carga de archivos:', selectedFiles);
+        console.log('🔄 Configurando estados de carga...');
+        setUploading(true);
+        setUploadError(null);
         
-        // Obtener archivos existentes de AsyncStorage
+        console.log('📁 Archivos seleccionados:', selectedFiles);
+        
+        const file = selectedFiles[0];
+        console.log('📁 Archivo principal:', file);
+        
+        // Crear FormData para enviar al backend
+        console.log('📤 Creando FormData...');
+        const formData = new FormData();
+        formData.append('file', {
+          uri: file.uri,
+          type: file.mimeType,
+          name: file.name,
+        });
+        
+        console.log('📤 FormData creado:', formData);
+        console.log('📤 Archivo URI:', file.uri);
+        console.log('📤 Archivo tipo:', file.mimeType);
+        console.log('📤 Archivo nombre:', file.name);
+        
+        // Subir al backend directamente
+        console.log('🚀 Llamando a uploadPartitura...');
+        const uploadedPartitura = await uploadPartitura(file);
+        console.log('✅ Upload completado:', uploadedPartitura);
+        
+        // También guardar localmente como respaldo
+        console.log('💾 Guardando en AsyncStorage...');
         const existingFilesString = await AsyncStorage.getItem('savedScores');
         const existingFiles = existingFilesString ? JSON.parse(existingFilesString) : [];
-        
-        // Agregar nuevos archivos a la lista existente
-        const updatedFiles = [...existingFiles, ...selectedFiles];
-        
-        // Guardar la lista actualizada en AsyncStorage
+        const updatedFiles = [...existingFiles, file];
         await AsyncStorage.setItem('savedScores', JSON.stringify(updatedFiles));
+        console.log('💾 AsyncStorage actualizado');
         
         setSelectedFiles([]);
+        console.log('🧹 Archivos seleccionados limpiados');
         
-        // Navegar con el score como parámetro
-        const firstFile = selectedFiles[0];
-        navigation.navigate('ScoreDetail', { score: firstFile });
+        // Navegar directamente a la pantalla de tocar la partitura
+        console.log('🎵 Navegando directamente a ScoreDetail...');
+        navigation.navigate('ScoreDetail', { score: uploadedPartitura });
       } catch (error) {
-        console.error('Error al guardar archivos:', error);
-        Alert.alert('Error', 'No se pudieron guardar los archivos en la aplicación');
+        console.error('❌ Error en handleConfirmUpload:', error);
+        console.error('❌ Error type:', error.constructor.name);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error stack:', error.stack);
+        setUploadError(error.message);
+        Alert.alert('Error', `No se pudo subir la partitura: ${error.message}`);
+      } finally {
+        console.log('🏁 Finalizando upload...');
+        setUploading(false);
       }
+    } else {
+      console.log('⚠️ No hay archivos seleccionados');
     }
   };
 
@@ -92,7 +133,20 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
       </View>
 
       <View style={styles.content}>
-        {selectedFiles.length === 0 ? (
+        
+        {uploadError && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error: {uploadError}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => setUploadError(null)}
+            >
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        
+        {!uploading && selectedFiles.length === 0 ? (
           <TouchableOpacity 
             style={styles.fullScreenButton}
             onPress={handleFileUpload}
@@ -104,7 +158,7 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
               SELECCIONAR{'\n'}ARCHIVO DE{'\n'}PARTITURA
             </Text>
           </TouchableOpacity>
-        ) : (
+        ) : !uploading && (
           <>
             <TouchableOpacity 
               style={styles.selectedFilesContainer}
@@ -137,13 +191,16 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.mainButton}
+                style={[styles.mainButton, uploading && styles.disabledButton]}
                 onPress={handleConfirmUpload}
+                disabled={uploading}
                 accessibilityLabel="Confirmar carga"
                 accessibilityRole="button"
                 accessibilityHint="Toca para confirmar la carga de los archivos seleccionados"
               >
-                <Text style={styles.buttonText}>CONFIRMAR{'\n'}CARGA</Text>
+                <Text style={[styles.buttonText, uploading && styles.disabledButtonText]}>
+                  {uploading ? 'SUBIENDO...' : 'CONFIRMAR\nCARGA'}
+                </Text>
               </TouchableOpacity>
             </View>
           </>
