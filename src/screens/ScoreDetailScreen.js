@@ -8,27 +8,29 @@ import {
 } from 'react-native';
 import { useScoreProgress } from '../hooks/useScoreProgress';
 
-const ScoreDetailScreen = ({ styles, triggerVibration, stop, setCurrentScreen, selectedScore, setSelectedScore }) => {
-  const { progress, loading, updateProgress } = useScoreProgress(selectedScore?.name);
+const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }) => {
+  const score = route.params?.score;
+  
+  const { progress, loading, updateProgress } = useScoreProgress(score?.name);
 
   const handleGoBack = () => {
     triggerVibration();
     stop();
-    setCurrentScreen('my');
+    navigation.goBack();
   };
 
   const handleStartFromBeginning = () => {
     triggerVibration();
-    setCurrentScreen('piano');
+    navigation.navigate('Piano', { score });
   };
 
   const handleContinueFromProgress = () => {
     triggerVibration();
-    setCurrentScreen('piano');
+    navigation.navigate('Piano', { score, continueFrom: progress });
   };
 
 
-  if (!selectedScore) {
+  if (!score) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
