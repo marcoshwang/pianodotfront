@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { usePractice } from '../context/PracticeContext';
+import { startPractice } from '../../services/pianodotApi';
 
 const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
   const score = route.params?.score;
@@ -32,13 +33,8 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
 
-  // Inicializar práctica cuando se carga la pantalla
-  useEffect(() => {
-    if (score?.id) {
-      console.log('🎵 Inicializando práctica para score:', score.id);
-      initializePractice();
-    }
-  }, [score?.id]);
+  // No inicializar práctica automáticamente
+  // La práctica se iniciará solo cuando se presione "REPRODUCIR COMPÁS"
 
   const handleGoBack = () => {
     triggerVibration();
@@ -46,36 +42,28 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     navigation.goBack();
   };
 
-  // Inicializar práctica
-  const initializePractice = async () => {
-    try {
-      console.log('🎵 Inicializando práctica para:', score.id);
-      await continuePractice(score.id);
-    } catch (error) {
-      console.error('❌ Error inicializando práctica:', error);
-      Alert.alert('Error', 'No se pudo inicializar la práctica');
-    }
-  };
 
-  // Botón 1: Reproducir compás (Audio TTS)
+  // Botón 1: Reproducir compás (Audio TTS) - Solo generar MP3
   const handlePlayCompas = async () => {
     try {
       triggerVibration();
-      console.log('🎵 Reproduciendo compás:', currentCompas);
+      console.log('🎵 Generando MP3 para partitura:', score.id);
       
       setIsLoadingAudio(true);
       
-      // Obtener audio del compás actual
-      const audioBlob = await getCompasAudio(currentCompas);
-      console.log('✅ Audio obtenido, reproduciendo...');
+      // Llamar directamente al endpoint POST /practice/{id}/start para generar MP3
+      const practiceResponse = await startPractice(score.id);
+      console.log('✅ MP3 generado exitosamente:', practiceResponse);
+      console.log('🎵 Respuesta completa:', practiceResponse);
+      console.log('🎵 State:', practiceResponse.state);
+      console.log('🎵 Audio path:', practiceResponse.audio);
       
-      // Reproducir audio
-      await playAudio(audioBlob);
-      setIsPlaying(true);
+      // Mostrar que se generó correctamente
+      Alert.alert('Éxito', 'MP3 generado correctamente. Revisa la consola para ver los detalles.');
       
     } catch (error) {
-      console.error('❌ Error reproduciendo compás:', error);
-      Alert.alert('Error', 'No se pudo reproducir el compás');
+      console.error('❌ Error generando MP3:', error);
+      Alert.alert('Error', 'No se pudo generar el MP3');
     } finally {
       setIsLoadingAudio(false);
     }
