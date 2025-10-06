@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
-const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
+const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings, speak, speakIntro }) => {
   // Prevenir que el botón back de Android salga de la aplicación cuando estemos en HomeScreen
   useFocusEffect(
     React.useCallback(() => {
@@ -26,6 +26,18 @@ const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
       return () => subscription?.remove();
     }, [])
   );
+
+  // Reproducir mensaje introductorio cuando se carga la pantalla
+  useEffect(() => {
+    const homeMessage = "Pantalla principal. Tienes tres opciones disponibles: Cargar Partituras para subir nuevas partituras, Mis Partituras para ver tus partituras guardadas, y Configuración para ajustar las opciones de la aplicación.";
+    
+    // Usar speakIntro si está disponible, sino usar speak
+    if (speakIntro) {
+      speakIntro(homeMessage);
+    } else if (speak) {
+      speak(homeMessage);
+    }
+  }, []);
   const handleLoadScores = () => {
     triggerVibration();
     stop();
