@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,48 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { uploadPartitura, testUploadEndpoint, testPostConnectivity, testPartiturasPostEndpoint } from '../../services/pianodotApi';
+import { usePractice } from '../context/PracticeContext'; // ✅ AGREGADO
 
 const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  
+  // ✅ AGREGADO: Obtener función para limpiar práctica
+  const { clearPractice, stopAudio, clearPreloadedSounds, clearAudioCache } = usePractice();
+
+  // ✅ MEJORADO: Limpieza más robusta de audio y práctica
+  useEffect(() => {
+    const cleanupPreviousPractice = async () => {
+      console.log('🧹 LoadScoresScreen: Limpiando práctica anterior...');
+      try {
+        // 1. Detener cualquier audio que esté sonando (múltiples intentos)
+        console.log('🛑 Deteniendo audio activo...');
+        await stopAudio();
+        
+        // 2. Esperar un momento para asegurar que el audio se detenga
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // 3. Limpiar audios precargados
+        console.log('🧹 Limpiando audios precargados...');
+        await clearPreloadedSounds();
+        
+        // 4. Limpiar el estado de la práctica (sin borrar progreso guardado)
+        console.log('🧹 Limpiando estado de práctica...');
+        await clearPractice(false);
+        
+        // 5. Limpiar cache de audio del contexto
+        console.log('🧹 Limpiando cache de audio...');
+        clearAudioCache();
+        
+        console.log('✅ Práctica anterior limpiada completamente');
+      } catch (error) {
+        console.error('❌ Error limpiando práctica:', error);
+      }
+    };
+
+    cleanupPreviousPractice();
+  }, []); // Solo al montar
 
   const handleFileUpload = async () => {
     triggerVibration();
@@ -87,6 +124,12 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
         
         setSelectedFiles([]);
         console.log('🧹 Archivos seleccionados limpiados');
+        
+        // ✅ AGREGADO: Limpieza final antes de navegar
+        console.log('🧹 Limpieza final antes de navegar...');
+        await stopAudio();
+        await clearPreloadedSounds();
+        clearAudioCache();
         
         // Navegar directamente a la pantalla de tocar la partitura
         console.log('🎵 Navegando directamente a ScoreDetail...');

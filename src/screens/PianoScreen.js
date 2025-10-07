@@ -29,6 +29,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
   const isPlayingRef = useRef(isPlaying);
   const isReproducingRef = useRef(isReproducing);
   const stopAudioRef = useRef(stopAudio);
+  const isNavigatingAwayRef = useRef(false); // ✅ NUEVO: Flag para indicar si está saliendo
 
   // Mantener refs actualizados
   useEffect(() => {
@@ -45,6 +46,12 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
 
   // Función para reproducir ambos audios (ya precargados)
   const reproduceAudios = useCallback(async () => {
+    // ✅ NUEVO: Verificar si está navegando fuera
+    if (isNavigatingAwayRef.current) {
+      console.log('🚫 Navegando fuera, cancelando reproducción');
+      return;
+    }
+
     if (!isMountedRef.current) {
       console.log('🚫 Componente desmontado, cancelando reproducción');
       return;
@@ -68,7 +75,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         await playAudioFromUrl(pianoUrl, 'Piano');
       }
       
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || isNavigatingAwayRef.current) return;
       
       console.log('🎵 Reproduciendo audio TTS (instrucciones)...');
       try {
@@ -97,7 +104,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       
       // Pequeño delay para asegurar que el componente esté listo
       const timeoutId = setTimeout(() => {
-        if (isMountedRef.current) {
+        if (isMountedRef.current && !isNavigatingAwayRef.current) {
           reproduceAudios();
         }
       }, 100);
@@ -109,21 +116,32 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
   // Efecto para limpiar al desmontar (SOLO navigation como dependencia)
   useEffect(() => {
     isMountedRef.current = true;
+    isNavigatingAwayRef.current = false; // ✅ NUEVO: Resetear flag
     console.log('🎬 PianoScreen montado');
 
     // Listener para cuando pierde el foco
     const unsubscribeBlur = navigation.addListener('blur', () => {
-      console.log('🧹 PianoScreen blur - limpiando audio');
+      console.log('🧹 PianoScreen blur - marcando como navegando fuera');
+      isNavigatingAwayRef.current = true; // ✅ NUEVO: Marcar que está saliendo
+      
       if (isPlayingRef.current || isReproducingRef.current) {
         console.log('🛑 Deteniendo audio por blur...');
         stopAudioRef.current();
       }
     });
 
+    // ✅ NUEVO: Listener para cuando recupera el foco
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      console.log('🎬 PianoScreen focus - resetear flag');
+      isNavigatingAwayRef.current = false;
+    });
+
     return () => {
       console.log('🧹 PianoScreen desmontando');
       isMountedRef.current = false;
+      isNavigatingAwayRef.current = true; // ✅ NUEVO: Marcar que está desmontando
       unsubscribeBlur();
+      unsubscribeFocus(); // ✅ NUEVO: Limpiar listener
       
       // Limpiar audio al desmontar
       if (isPlayingRef.current || isReproducingRef.current) {
@@ -135,6 +153,9 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
 
   const handleGoBack = async () => {
     triggerVibration();
+    
+    // ✅ NUEVO: Marcar que está navegando fuera ANTES de hacer nada
+    isNavigatingAwayRef.current = true;
     
     // Detener audio si está reproduciéndose
     if (isPlaying || isReproducing) {

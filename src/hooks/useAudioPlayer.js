@@ -265,26 +265,47 @@ export const useAudioPlayer = () => {
     }
   }, [configureAudioMode]);
 
-  // Detener audio
+  // ✅ MEJORADO: Detener audio de forma más robusta
   const stopAudio = useCallback(async () => {
     try {
+      console.log('🛑 Deteniendo audio...');
+      
+      // 1. Detener audio principal si existe
       if (soundRef.current) {
-        console.log('🛑 Deteniendo audio...');
-        
-        // Limpiar callbacks antes de detener
-        soundRef.current.setOnPlaybackStatusUpdate(null);
-        
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
+        try {
+          // Limpiar callbacks antes de detener
+          soundRef.current.setOnPlaybackStatusUpdate(null);
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+        } catch (err) {
+          console.log('⚠️ Error deteniendo audio principal:', err);
+        }
         soundRef.current = null;
         setSound(null);
-        setIsPlaying(false);
-        console.log('✅ Audio detenido');
       }
+      
+      // 2. Detener todos los audios precargados
+      for (const [type, sound] of Object.entries(preloadedSounds)) {
+        if (sound) {
+          try {
+            sound.setOnPlaybackStatusUpdate(null);
+            await sound.stopAsync();
+            await sound.unloadAsync();
+          } catch (err) {
+            console.log(`⚠️ Error deteniendo audio precargado ${type}:`, err);
+          }
+        }
+      }
+      
+      // 3. Limpiar estado
+      setIsPlaying(false);
+      setError(null);
+      
+      console.log('✅ Audio detenido completamente');
     } catch (error) {
       console.error('❌ Error deteniendo audio:', error);
     }
-  }, []);
+  }, [preloadedSounds]);
 
   // Limpiar audios precargados
   const clearPreloadedSounds = useCallback(async () => {
