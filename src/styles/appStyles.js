@@ -406,11 +406,12 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       lineHeight: sizeConfig.buttonText * 1.2 * 1.2,
     },
     
+    // ✅ ESTILOS CORREGIDOS PARA PROGRESO
     progressInfo: {
       backgroundColor: contrastConfig.backgroundColor,
       borderRadius: 16,
-      padding: 20,
-      marginBottom: 10,
+      padding: 25,
+      marginBottom: 25,
       marginTop: 10,
       width: '100%',
       alignItems: 'center',
@@ -427,41 +428,42 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     },
     
     progressText: {
-      fontSize: sizeConfig.buttonText * 0.9,
-      fontFamily: 'Fredoka_600SemiBold',
-      color: contrastConfig.subtitleColor === '#76FF03' ? '#76FF03' : 
-             contrastConfig.subtitleColor === '#3FE6FF' ? '#3FE6FF' : 
-             contrastConfig.subtitleColor === '#FFFF00' ? '#FFFF00' : 
-             contrastConfig.subtitleColor === '#FFFFFF' ? '#FFFFFF' : '#000000',
+      fontSize: 20,
+      fontFamily: 'Fredoka_700Bold',
+      color: contrastConfig.subtitleColor,
       textAlign: 'center',
-      marginBottom: 5,
+      marginBottom: 8,
+      letterSpacing: 0.5,
     },
     
     progressSubtext: {
-      fontSize: sizeConfig.buttonText * 0.7,
+      fontSize: 14,
       fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
-      opacity: 0.8,
+      opacity: 0.9,
+      marginBottom: 3,
+      lineHeight: 20,
     },
     
     actionButtonsContainer: {
       flex: 1,
+      width: '100%',
       justifyContent: 'space-evenly',
-      paddingTop: sizeConfig.buttonPadding,
-      paddingBottom: sizeConfig.buttonPadding,
+      paddingTop: 0,
+      paddingBottom: 20,
     },
     
     actionButton: {
       backgroundColor: contrastConfig.buttonColor,
       borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 15,
+      paddingVertical: 40,
       paddingHorizontal: 20,
-      marginVertical: 15,
+      marginVertical: 12,
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
-      minHeight: '80%',
+      minHeight: 120,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -474,11 +476,11 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     actionButtonText: {
       color: contrastConfig.textColor,
-      fontSize: sizeConfig.buttonText * 1.1,
+      fontSize: 20,
       fontFamily: 'Fredoka_700Bold',
       textAlign: 'center',
-      letterSpacing: 1.5,
-      lineHeight: sizeConfig.buttonText * 1.1 * 1.3,
+      letterSpacing: 1.2,
+      lineHeight: 26,
     },
     
     resetButton: {
@@ -532,7 +534,6 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       marginTop: 0,
     },
     
-    
     pianoImage: {
       width: '100%',
       height: '100%',
@@ -563,7 +564,6 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       shadowRadius: 6,
       elevation: 8,
     },
-
     
     controlsButton: {
       backgroundColor: contrastConfig.buttonColor,
@@ -976,32 +976,6 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       letterSpacing: 1,
       lineHeight: sizeConfig.buttonText * 1.2 * 1.2,
     },
-    
-    registerButton: {
-      backgroundColor: contrastConfig.buttonColor,
-      borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 2,
-      paddingHorizontal: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 6,
-    },
-    
-    registerButtonText: {
-      color: contrastConfig.textColor,
-      fontSize: sizeConfig.buttonText * 0.9,
-      fontFamily: 'Fredoka_700Bold',
-      textAlign: 'center',
-      letterSpacing: 1,
-      lineHeight: sizeConfig.buttonText * 0.9 * 1.2,
-    },
 
     // Estilos para popup de upload
     uploadPopup: {
@@ -1035,7 +1009,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     uploadPopupTitle: {
       fontSize: sizeConfig.titleSize,
-      fontWeight: 'bold',
+      fontFamily: 'Fredoka_700Bold',
       color: contrastConfig.textColor,
       textAlign: 'center',
       marginTop: 15,
@@ -1044,6 +1018,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     uploadPopupMessage: {
       fontSize: sizeConfig.textSize,
+      fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
       lineHeight: sizeConfig.textSize * 1.4,
@@ -1067,7 +1042,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     scoreTitle: {
       fontSize: sizeConfig.titleSize,
-      fontWeight: 'bold',
+      fontFamily: 'Fredoka_700Bold',
       color: contrastConfig.textColor,
       textAlign: 'center',
       marginBottom: 10,
@@ -1075,6 +1050,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     scoreSubtitle: {
       fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
       fontStyle: 'italic',
@@ -1093,13 +1069,14 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     statusText: {
       fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_500Medium',
       color: contrastConfig.textColor,
       marginLeft: 8,
-      fontWeight: '500',
     },
     
     statusSubtext: {
       fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       marginLeft: 8,
       fontStyle: 'italic',
@@ -1107,14 +1084,14 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     readyStatusText: {
       fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_700Bold',
       color: '#34C759',
-      fontWeight: 'bold',
     },
     
     errorStatusText: {
       fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_700Bold',
       color: '#FF3B30',
-      fontWeight: 'bold',
     },
     
     detailsContainer: {
@@ -1123,13 +1100,14 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     detailsTitle: {
       fontSize: sizeConfig.textSize || 16,
-      fontWeight: 'bold',
+      fontFamily: 'Fredoka_700Bold',
       color: contrastConfig.textColor,
       marginBottom: 8,
     },
     
     detailText: {
       fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       marginBottom: 4,
       lineHeight: (sizeConfig.textSize || 16) * 1.3,
@@ -1141,7 +1119,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     predictionsTitle: {
       fontSize: sizeConfig.textSize || 16,
-      fontWeight: 'bold',
+      fontFamily: 'Fredoka_700Bold',
       color: contrastConfig.textColor,
       marginBottom: 8,
     },
@@ -1155,6 +1133,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     predictionText: {
       fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.textColor,
       lineHeight: (sizeConfig.textSize || 16) * 1.2,
     },
@@ -1170,7 +1149,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     refreshButtonText: {
       color: contrastConfig.textColor,
       fontSize: (sizeConfig.buttonText || 18) * 0.9,
-      fontWeight: 'bold',
+      fontFamily: 'Fredoka_700Bold',
     },
     
     // Contenedor del popup
@@ -1224,7 +1203,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     retryButtonText: {
       color: contrastConfig.textColor,
       fontSize: sizeConfig.buttonText || 18,
-      fontWeight: 'bold',
+      fontFamily: 'Fredoka_700Bold',
     },
     
     // Estilos para el popup mejorado
@@ -1272,76 +1251,41 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       letterSpacing: 0.5,
     },
 
-    // Contenedor de información de progreso
-progressContainer: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: 15,
-  marginHorizontal: 20,
-  marginVertical: 10,
-  borderRadius: 10,
-  borderWidth: 2,
-  borderColor: '#4CAF50',
-},
+    // ✅ ESTILOS ADICIONALES PARA PROGRESO (otros contextos)
+    progressContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 15,
+      marginHorizontal: 20,
+      marginVertical: 10,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: '#4CAF50',
+    },
 
-// Información de progreso (lado izquierdo)
-progressInfo: {
-  flex: 1,
-  marginRight: 10,
-},
+    // Notificación de progreso cargado
+    progressNotification: {
+      position: 'absolute',
+      top: 80,
+      left: 20,
+      right: 20,
+      padding: 15,
+      borderRadius: 10,
+      zIndex: 1000,
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+    },
 
-// Texto del progreso actual
-progressText: {
-  fontSize: 18,
-  fontWeight: 'bold',
-  marginBottom: 5,
-},
-
-// Subtexto del progreso
-progressSubtext: {
-  fontSize: 14,
-  opacity: 0.8,
-},
-
-// Botón de reiniciar progreso
-resetButton: {
-  paddingHorizontal: 15,
-  paddingVertical: 8,
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: '#FF5722',
-},
-
-// Texto del botón de reiniciar
-resetButtonText: {
-  fontSize: 14,
-  fontWeight: 'bold',
-  color: '#FF5722',
-},
-
-// Notificación de progreso cargado
-progressNotification: {
-  position: 'absolute',
-  top: 80,
-  left: 20,
-  right: 20,
-  padding: 15,
-  borderRadius: 10,
-  zIndex: 1000,
-  elevation: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-},
-
-// Texto de la notificación
-progressNotificationText: {
-  color: '#FFFFFF',
-  fontSize: 16,
-  fontWeight: 'bold',
-  textAlign: 'center',
-},
+    // Texto de la notificación
+    progressNotificationText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontFamily: 'Fredoka_700Bold',
+      textAlign: 'center',
+    },
   });
 };
