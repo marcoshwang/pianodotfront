@@ -428,21 +428,22 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     },
     
     progressText: {
-      fontSize: 20,
+      fontSize: 33, // Ahora usa tamaño dinámico
       fontFamily: 'Fredoka_700Bold',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
-      marginBottom: 8,
+      marginBottom: 2,
       letterSpacing: 0.5,
+      lineHeight: 30,
     },
     
     progressSubtext: {
-      fontSize: 14,
+      fontSize: 18, // Ahora usa tamaño dinámico
       fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
       opacity: 0.9,
-      marginBottom: 3,
+      marginBottom: 1,
       lineHeight: 20,
     },
     
@@ -457,13 +458,13 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     actionButton: {
       backgroundColor: contrastConfig.buttonColor,
       borderRadius: 16,
-      paddingVertical: 40,
+      paddingVertical: sizeConfig.buttonPadding * 2, // Ahora usa padding dinámico
       paddingHorizontal: 20,
       marginVertical: 12,
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
-      minHeight: 120,
+      minHeight: sizeConfig.buttonPadding * 6, // Altura mínima dinámica
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -476,11 +477,11 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     actionButtonText: {
       color: contrastConfig.textColor,
-      fontSize: 20,
+      fontSize: sizeConfig.buttonText * 1.0, // Ahora usa tamaño dinámico
       fontFamily: 'Fredoka_700Bold',
       textAlign: 'center',
       letterSpacing: 1.2,
-      lineHeight: 26,
+      lineHeight: sizeConfig.buttonText * 1.0 * 1.3,
     },
     
     resetButton: {
