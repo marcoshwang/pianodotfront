@@ -532,6 +532,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       marginTop: 0,
     },
     
+    
     pianoImage: {
       width: '100%',
       height: '100%',
@@ -543,6 +544,26 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       backgroundColor: contrastConfig.backgroundColor,
       marginTop: -30,
     },
+
+    // Mensaje de lección terminada
+    lessonCompleteContainer: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 15,
+      paddingVertical: 15,
+      paddingHorizontal: 25,
+      marginHorizontal: 20,
+      marginBottom: 15,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 8,
+    },
+
     
     controlsButton: {
       backgroundColor: contrastConfig.buttonColor,

@@ -26,11 +26,14 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     repeatCurrentCompas,
     getCompasAudio,
     playAudio,
+    playAudioFromUrl,
+    playPreloadedAudio,
+    preloadAudio,
+    stopAudio,
     hasActivePractice,
   } = usePractice();
 
   // Estados locales
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
 
   // No inicializar práctica automáticamente
@@ -43,27 +46,51 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
   };
 
 
-  // Botón 1: Reproducir compás (Audio TTS) - Solo generar MP3
+  // Botón 1: Reproducir compás (Audio TTS) - Obtener ambos audios
   const handlePlayCompas = async () => {
     try {
       triggerVibration();
-      console.log('🎵 Generando MP3 para partitura:', score.id);
+      console.log('🎵 Obteniendo audios para partitura:', score.id);
       
       setIsLoadingAudio(true);
       
-      // Llamar directamente al endpoint POST /practice/{id}/start para generar MP3
-      const practiceResponse = await startPractice(score.id);
-      console.log('✅ MP3 generado exitosamente:', practiceResponse);
-      console.log('🎵 Respuesta completa:', practiceResponse);
-      console.log('🎵 State:', practiceResponse.state);
-      console.log('🎵 Audio path:', practiceResponse.audio);
+      console.log('🔍 Score ID que estamos usando:', score.id);
+      console.log('🔍 Score completo:', score);
       
-      // Mostrar que se generó correctamente
-      Alert.alert('Éxito', 'MP3 generado correctamente. Revisa la consola para ver los detalles.');
+      // Primero iniciar la práctica si no existe
+      if (!hasActivePractice) {
+        console.log('🚀 Iniciando nueva práctica...');
+        await startNewPractice(score.id);
+        console.log('✅ Práctica iniciada');
+      }
+      
+      // Primero generar los archivos (si no existen)
+      console.log('🚀 Generando archivos de audio...');
+      const practiceResponse = await startPractice(score.id);
+      console.log('✅ Archivos generados:', practiceResponse);
+      
+      // URLs de los audios
+      const ttsUrl = `http://10.0.2.2:8000/partituras/${score.id}/audio_tts/1`;
+      const pianoUrl = `http://10.0.2.2:8000/partituras/${score.id}/audio_piano/1`;
+      
+      // Precargar audios antes de navegar
+      console.log('🎵 Precargando audios...');
+      await preloadAudio(pianoUrl, 'Piano');
+      await preloadAudio(ttsUrl, 'TTS');
+      console.log('✅ Audios precargados');
+      
+      // Navegar a PianoScreen para reproducir los audios
+      console.log('🎵 Navegando a PianoScreen para reproducir audios...');
+      navigation.navigate('Piano', { 
+        score,
+        playAudio: true,
+        ttsUrl,
+        pianoUrl
+      });
       
     } catch (error) {
-      console.error('❌ Error generando MP3:', error);
-      Alert.alert('Error', 'No se pudo generar el MP3');
+      console.error('❌ Error obteniendo audios:', error);
+      Alert.alert('Error', 'No se pudieron obtener los audios');
     } finally {
       setIsLoadingAudio(false);
     }
@@ -107,6 +134,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       Alert.alert('Error', 'No se pudo retroceder al compás anterior');
     }
   };
+
 
   // Obtener configuraciones dinámicas
   const sizeConfig = getCurrentSizeConfig();
@@ -220,6 +248,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
           >
             <Text style={styles.controlButtonText}>ANTERIOR{'\n'}COMPÁS</Text>
           </TouchableOpacity>
+
         </View>
       </View>
     </SafeAreaView>

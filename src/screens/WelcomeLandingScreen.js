@@ -6,19 +6,13 @@ import {
   SafeAreaView,
   Image,
 } from 'react-native';
+import { usePractice } from '../context/PracticeContext';
 
 const WelcomeLandingScreen = ({ navigation, styles, triggerVibration, stop, speak, speakIntro, settings }) => {
-  // Reproducir mensaje de bienvenida cuando se carga la pantalla
-  useEffect(() => {
-    const welcomeMessage = "Bienvenido a PianoDot. Sumergite en el aprendizaje del piano a través de instrucciones auditivas. Toca el botón Empezar para continuar.";
-    
-    // Usar speakIntro si está disponible, sino usar speak
-    if (speakIntro) {
-      speakIntro(welcomeMessage);
-    } else if (speak) {
-      speak(welcomeMessage);
-    }
-  }, [speak, speakIntro]);
+  // Contexto de práctica para detener audio
+  const { stopAudio } = usePractice();
+
+
 
   const handleStart = () => {
     triggerVibration();
