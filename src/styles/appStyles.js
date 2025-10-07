@@ -1271,5 +1271,77 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       fontFamily: 'Fredoka_600SemiBold',
       letterSpacing: 0.5,
     },
+
+    // Contenedor de información de progreso
+progressContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: 15,
+  marginHorizontal: 20,
+  marginVertical: 10,
+  borderRadius: 10,
+  borderWidth: 2,
+  borderColor: '#4CAF50',
+},
+
+// Información de progreso (lado izquierdo)
+progressInfo: {
+  flex: 1,
+  marginRight: 10,
+},
+
+// Texto del progreso actual
+progressText: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 5,
+},
+
+// Subtexto del progreso
+progressSubtext: {
+  fontSize: 14,
+  opacity: 0.8,
+},
+
+// Botón de reiniciar progreso
+resetButton: {
+  paddingHorizontal: 15,
+  paddingVertical: 8,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: '#FF5722',
+},
+
+// Texto del botón de reiniciar
+resetButtonText: {
+  fontSize: 14,
+  fontWeight: 'bold',
+  color: '#FF5722',
+},
+
+// Notificación de progreso cargado
+progressNotification: {
+  position: 'absolute',
+  top: 80,
+  left: 20,
+  right: 20,
+  padding: 15,
+  borderRadius: 10,
+  zIndex: 1000,
+  elevation: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+},
+
+// Texto de la notificación
+progressNotificationText: {
+  color: '#FFFFFF',
+  fontSize: 16,
+  fontWeight: 'bold',
+  textAlign: 'center',
+},
   });
 };

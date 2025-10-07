@@ -350,6 +350,30 @@ export const repeatCompas = async (partituraId) => {
   }
 };
 
+
+/**
+ * Obtener resumen de compases visitados de una partitura
+ * @param {string} partituraId - ID de la partitura
+ * @returns {Promise<Object>} - Resumen con compases visitados y total
+ */
+export const getCompasesResumen = async (partituraId) => {
+  try {
+    console.log('📊 Obteniendo resumen de compases para:', partituraId);
+    const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}/compases/resumen`, {
+      method: 'GET',
+      headers: createHeaders(),
+    });
+    
+    await handleResponse(response);
+    const data = await response.json();
+    console.log('✅ Resumen obtenido:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error obteniendo resumen de compases:', error);
+    throw error;
+  }
+};
+
 // ===== UTILIDADES =====
 
 /**

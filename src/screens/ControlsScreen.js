@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePractice } from '../context/PracticeContext';
 import { startPractice } from '../../services/pianodotApi';
@@ -34,16 +35,16 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     isPlaying,
     hasActivePractice,
     currentPartituraId,
-    setPartituraId, // ✅ AÑADIDO
+    setPartituraId,
   } = usePractice();
 
   // Estados locales
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isLoadingRepeat, setIsLoadingRepeat] = useState(false);
-  const [isLoadingNext, setIsLoadingNext] = useState(false); // ✅ AÑADIDO
-  const [isLoadingPrev, setIsLoadingPrev] = useState(false); // ✅ AÑADIDO
+  const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [isLoadingPrev, setIsLoadingPrev] = useState(false);
 
-  // ✅ AÑADIDO: Establecer el ID de partitura al montar el componente
+  // Establecer el ID de partitura al montar
   useEffect(() => {
     if (score?.id) {
       console.log('🎵 Estableciendo ID de partitura en ControlsScreen:', score.id);
@@ -69,47 +70,55 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     navigation.goBack();
   };
 
-  // Botón 1: Reproducir compás (Audio TTS) - Obtener ambos audios
+  // ✅ MODIFICADO: Botón 1 - Reproducir compás (con respeto al progreso guardado)
   const handlePlayCompas = async () => {
     try {
       triggerVibration();
-      console.log('🎵 Obteniendo audios para partitura:', score.id);
+      console.log('🎵 Reproduciendo compás para partitura:', score.id);
       
       setIsLoadingAudio(true);
       
-      console.log('🔍 Score ID que estamos usando:', score.id);
-      console.log('🔍 Score completo:', score);
-      
-      // Primero iniciar la práctica si no existe
+      // Iniciar la práctica si no existe (cargará progreso guardado automáticamente)
       if (!hasActivePractice) {
-        console.log('🚀 Iniciando nueva práctica...');
-        await startNewPractice(score.id);
-        console.log('✅ Práctica iniciada');
+        console.log('🚀 Cargando práctica...');
+        
+        // Verificar si debe iniciar desde el principio
+        const startFromBeginning = await AsyncStorage.getItem(`start_from_beginning_${score.id}`);
+        
+        if (startFromBeginning === 'true') {
+          console.log('🆕 Iniciando desde compás 1');
+          await startNewPractice(score.id, true); // true = desde inicio
+          await AsyncStorage.removeItem(`start_from_beginning_${score.id}`);
+        } else {
+          console.log('📂 Cargando progreso guardado');
+          await startNewPractice(score.id, false); // false = cargar progreso
+        }
+        
+        console.log('✅ Práctica lista, compás actual:', currentCompas);
       }
       
-      // Primero generar los archivos (si no existen)
+      const compasActual = currentCompas || 1;
+      console.log('🎵 Compás a reproducir:', compasActual);
+      
+      // SOLO AQUÍ generamos los archivos de audio (cuando el usuario presiona reproducir)
       console.log('🚀 Generando archivos de audio...');
       const practiceResponse = await startPractice(score.id);
       console.log('✅ Archivos generados:', practiceResponse);
-      
-      // ✅ MEJORADO: Usar el compás actual de la práctica
-      const compasActual = currentCompas || 1;
       
       // URLs de los audios
       const ttsUrl = `http://10.0.2.2:8000/partituras/${score.id}/audio_tts/${compasActual}`;
       const pianoUrl = `http://10.0.2.2:8000/partituras/${score.id}/audio_piano/${compasActual}`;
       
-      // Precargar audios antes de navegar
+      // Precargar audios
       console.log('🎵 Precargando audios...');
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
       console.log('✅ Audios precargados');
       
-      // TIMESTAMP ÚNICO para forzar reproducción
       const playTimestamp = Date.now();
       
-      // Navegar a PianoScreen para reproducir los audios
-      console.log('🎵 Navegando a PianoScreen para reproducir audios...');
+      // Navegar a PianoScreen
+      console.log('🎵 Navegando a PianoScreen...');
       navigation.navigate('Piano', { 
         score,
         playAudio: true,
@@ -131,10 +140,8 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     try {
       triggerVibration();
       console.log('🔄 Repitiendo compás actual...');
-      console.log('🔍 ID de partitura global:', currentPartituraId);
       
       if (!currentPartituraId) {
-        console.warn('⚠️ No hay ID de partitura, no se puede repetir compás');
         Alert.alert('Error', 'No hay una partitura seleccionada. Primero inicia una práctica.');
         return;
       }
@@ -143,21 +150,18 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       
       const updatedPractice = await repeatCurrentCompas();
       console.log('✅ Compás repetido exitosamente');
-      console.log('🎵 Navegando a PianoScreen para reproducir audios repetidos...');
       
       // URLs de los audios
       const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
       const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       
-      // Precargar audios nuevamente
-      console.log('🎵 Precargando audios para repetir...');
+      // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
-      console.log('✅ Audios precargados para repetir');
       
       const playTimestamp = Date.now();
       
-      // Navegar a PianoScreen con los nuevos audios
+      // Navegar a PianoScreen
       navigation.navigate('Piano', {
         score: { id: currentPartituraId },
         playAudio: true,
@@ -174,37 +178,33 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     }
   };
 
-  // ✅ MEJORADO: Botón 3: Siguiente compás
+  // Botón 3: Siguiente compás
   const handleNextCompas = async () => {
     try {
       triggerVibration();
       console.log('⏭️ Siguiente compás');
       
       if (!currentPartituraId) {
-        console.warn('⚠️ No hay ID de partitura, no se puede avanzar');
         Alert.alert('Error', 'No hay una partitura seleccionada. Primero inicia una práctica.');
         return;
       }
 
       setIsLoadingNext(true);
       
-      // Avanzar al siguiente compás
       const updatedPractice = await nextCompas();
       console.log('✅ Siguiente compás cargado:', updatedPractice);
       
-      // URLs de los audios del nuevo compás
+      // URLs de los audios
       const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
       const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       
       // Precargar audios
-      console.log('🎵 Precargando audios para siguiente compás...');
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
-      console.log('✅ Audios precargados para siguiente compás');
       
       const playTimestamp = Date.now();
       
-      // Navegar a PianoScreen para reproducir
+      // Navegar a PianoScreen
       navigation.navigate('Piano', {
         score: { id: currentPartituraId },
         playAudio: true,
@@ -221,37 +221,33 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     }
   };
 
-  // ✅ MEJORADO: Botón 4: Compás anterior
+  // Botón 4: Compás anterior
   const handlePrevCompas = async () => {
     try {
       triggerVibration();
       console.log('⏮️ Compás anterior');
       
       if (!currentPartituraId) {
-        console.warn('⚠️ No hay ID de partitura, no se puede retroceder');
         Alert.alert('Error', 'No hay una partitura seleccionada. Primero inicia una práctica.');
         return;
       }
 
       setIsLoadingPrev(true);
       
-      // Retroceder al compás anterior
       const updatedPractice = await prevCompas();
       console.log('✅ Compás anterior cargado:', updatedPractice);
       
-      // URLs de los audios del compás anterior
+      // URLs de los audios
       const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
       const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       
       // Precargar audios
-      console.log('🎵 Precargando audios para compás anterior...');
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
-      console.log('✅ Audios precargados para compás anterior');
       
       const playTimestamp = Date.now();
       
-      // Navegar a PianoScreen para reproducir
+      // Navegar a PianoScreen
       navigation.navigate('Piano', {
         score: { id: currentPartituraId },
         playAudio: true,
@@ -272,7 +268,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
   const sizeConfig = getCurrentSizeConfig();
   const contrastConfig = getCurrentContrastConfig();
 
-  // Función para determinar si necesita separar el texto según el tamaño
   const getReproducirText = () => {
     if (settings?.fontSize === 'large' || settings?.fontSize === 'extraLarge') {
       return 'REPRODU' + '\n' + 'CIR COMPÁS';
@@ -280,7 +275,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     return 'REPRODUCIR' + '\n' + 'COMPÁS';
   };
 
-  // Función para obtener el padding vertical de los botones de control
   const getControlPadding = () => {
     if (settings?.fontSize === 'normal') {
       return sizeConfig.buttonPadding * 3;
@@ -296,14 +290,12 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
           onPress={handleGoBack}
           accessibilityLabel="Volver"
           accessibilityRole="button"
-          accessibilityHint="Regresar a la pantalla anterior"
         >
           <Text style={styles.backButtonText}>VOLVER</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.controlsContainer}>
-
         <View style={styles.controlsButtonsContainer}>
           {/* Botón 1: Reproducir compás */}
           <TouchableOpacity
@@ -318,7 +310,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
             disabled={practiceLoading || isLoadingAudio}
             accessibilityLabel="Reproducir compás"
             accessibilityRole="button"
-            accessibilityHint="Presionar para reproducir el compás actual"
           >
             {isLoadingAudio ? (
               <ActivityIndicator size="small" color={contrastConfig.textColor} />
@@ -340,7 +331,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
             disabled={practiceLoading || !hasActivePractice || isLoadingRepeat}
             accessibilityLabel="Repetir compás"
             accessibilityRole="button"
-            accessibilityHint="Presionar para repetir el compás actual"
           >
             {isLoadingRepeat ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -362,7 +352,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
             disabled={practiceLoading || !hasActivePractice || isLoadingNext}
             accessibilityLabel="Siguiente compás"
             accessibilityRole="button"
-            accessibilityHint="Presionar para avanzar al siguiente compás"
           >
             {isLoadingNext ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -384,7 +373,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
             disabled={practiceLoading || !hasActivePractice || isLoadingPrev}
             accessibilityLabel="Anterior compás"
             accessibilityRole="button"
-            accessibilityHint="Presionar para retroceder al compás anterior"
           >
             {isLoadingPrev ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -392,7 +380,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               <Text style={styles.controlButtonText}>ANTERIOR{'\n'}COMPÁS</Text>
             )}
           </TouchableOpacity>
-
         </View>
       </View>
     </SafeAreaView>
