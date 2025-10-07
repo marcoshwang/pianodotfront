@@ -99,42 +99,60 @@ export const PracticeProvider = ({ children }) => {
   }, [currentPractice, startNewPractice]);
 
   const nextCompas = useCallback(async () => {
-    if (!currentPractice) {
-      setError('No active practice session.');
+    if (!currentPartituraId) {
+      console.error('❌ No hay ID de partitura disponible');
+      setError('No partitura ID available.');
       return;
     }
+    
+    console.log('⏭️ Iniciando avance a siguiente compás...');
+    console.log('🔍 ID de partitura:', currentPartituraId);
+    
     setIsLoading(true);
     setError(null);
+    
     try {
-      const updatedPractice = await getNextCompas(currentPractice.partitura_id);
+      const updatedPractice = await getNextCompas(currentPartituraId);
+      console.log('✅ Siguiente compás obtenido:', updatedPractice);
       setCurrentPractice(updatedPractice);
-      setCurrentCompas(updatedPractice.current_compas);
+      setCurrentCompas(updatedPractice.state.last_compas);
+      return updatedPractice;
     } catch (err) {
+      console.error('❌ Error en nextCompas:', err);
       setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [currentPractice]);
+  }, [currentPartituraId]);
 
   const prevCompas = useCallback(async () => {
-    if (!currentPractice) {
-      setError('No active practice session.');
+    if (!currentPartituraId) {
+      console.error('❌ No hay ID de partitura disponible');
+      setError('No partitura ID available.');
       return;
     }
+    
+    console.log('⏮️ Iniciando retroceso a compás anterior...');
+    console.log('🔍 ID de partitura:', currentPartituraId);
+    
     setIsLoading(true);
     setError(null);
+    
     try {
-      const updatedPractice = await getPrevCompas(currentPractice.partitura_id);
+      const updatedPractice = await getPrevCompas(currentPartituraId);
+      console.log('✅ Compás anterior obtenido:', updatedPractice);
       setCurrentPractice(updatedPractice);
-      setCurrentCompas(updatedPractice.current_compas);
+      setCurrentCompas(updatedPractice.state.last_compas);
+      return updatedPractice;
     } catch (err) {
+      console.error('❌ Error en prevCompas:', err);
       setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [currentPractice]);
+  }, [currentPartituraId]);
 
   const repeatCurrentCompas = useCallback(async () => {
     if (!currentPartituraId) {
