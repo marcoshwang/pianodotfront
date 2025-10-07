@@ -38,6 +38,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
 
   // Estados locales
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [isLoadingRepeat, setIsLoadingRepeat] = useState(false);
 
   // Limpiar audio cuando se sale de ControlsScreen
   useFocusEffect(
@@ -126,8 +127,12 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       if (!currentPartituraId) {
         console.warn('⚠️ No hay ID de partitura, no se puede repetir compás');
         Alert.alert('Error', 'No hay una partitura seleccionada. Primero inicia una práctica.');
+        setIsLoadingRepeat(false); // Desactivar loading en caso de error temprano
         return;
       }
+
+      // Activar loading para el botón de repetir
+      setIsLoadingRepeat(true);
       
       const updatedPractice = await repeatCurrentCompas();
       console.log('✅ Compás repetido exitosamente');
@@ -158,6 +163,9 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     } catch (error) {
       console.error('❌ Error repitiendo compás:', error);
       Alert.alert('Error', 'No se pudo repetir el compás');
+    } finally {
+      // Desactivar loading para el botón de repetir
+      setIsLoadingRepeat(false);
     }
   };
 
@@ -253,16 +261,20 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               styles.controlButton,
               {
                 paddingVertical: getControlPadding(),
-                opacity: (practiceLoading || !hasActivePractice) ? 0.7 : 1,
+                opacity: (practiceLoading || !hasActivePractice || isLoadingRepeat) ? 0.7 : 1,
               }
             ]}
             onPress={handleRepeatCompas}
-            disabled={practiceLoading || !hasActivePractice}
+            disabled={practiceLoading || !hasActivePractice || isLoadingRepeat}
             accessibilityLabel="Repetir compás"
             accessibilityRole="button"
             accessibilityHint="Presionar para repetir el compás actual"
           >
-            <Text style={styles.controlButtonText}>REPETIR{'\n'}COMPÁS</Text>
+            {isLoadingRepeat ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.controlButtonText}>REPETIR{'\n'}COMPÁS</Text>
+            )}
           </TouchableOpacity>
 
           {/* Botón 3: Siguiente compás */}
