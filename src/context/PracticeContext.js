@@ -26,6 +26,9 @@ export const PracticeProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Variable global para el ID de la partitura actual
+  const [currentPartituraId, setCurrentPartituraId] = useState(null);
+  
   // Audio cache
   const [audioCache, setAudioCache] = useState({});
   
@@ -134,28 +137,36 @@ export const PracticeProvider = ({ children }) => {
   }, [currentPractice]);
 
   const repeatCurrentCompas = useCallback(async () => {
-    if (!currentPractice) {
-      setError('No active practice session.');
+    if (!currentPartituraId) {
+      console.error('❌ No hay ID de partitura disponible');
+      setError('No partitura ID available.');
       return;
     }
+    console.log('🔄 Iniciando repetición de compás...');
+    console.log('🔍 ID de partitura:', currentPartituraId);
+    console.log('🔍 Compás actual:', currentCompas);
+    
     setIsLoading(true);
     setError(null);
     try {
-      const updatedPractice = await repeatCompas(currentPractice.partitura_id);
+      const updatedPractice = await repeatCompas(currentPartituraId);
+      console.log('✅ Compás repetido, nueva práctica:', updatedPractice);
       setCurrentPractice(updatedPractice);
-      setCurrentCompas(updatedPractice.current_compas);
+      setCurrentCompas(updatedPractice.state.last_compas);
+      return updatedPractice; // Devolver la respuesta para usar en ControlsScreen
     } catch (err) {
+      console.error('❌ Error en repeatCurrentCompas:', err);
       setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [currentPractice]);
+  }, [currentPartituraId, currentCompas]);
 
   // Obtener audio TTS para compás específico
   const getCompasAudio = useCallback(async (compasNumber = null, partituraId = null) => {
     const compas = compasNumber || currentCompas || 1;
-    const id = partituraId || currentPractice?.partitura_id;
+    const id = partituraId || currentPartituraId;
 
     if (!id) {
       throw new Error('No hay partitura ID disponible');
@@ -240,11 +251,18 @@ export const PracticeProvider = ({ children }) => {
     }
   }, [currentPractice, currentCompas, audioCache]);
 
+  // Función para establecer el ID de la partitura actual
+  const setPartituraId = useCallback((partituraId) => {
+    console.log('🎵 Estableciendo ID de partitura global:', partituraId);
+    setCurrentPartituraId(partituraId);
+  }, []);
+
   // Limpiar práctica
   const clearPractice = useCallback(() => {
     console.log('🧹 Limpiando práctica');
     setCurrentPractice(null);
     setCurrentCompas(null);
+    setCurrentPartituraId(null);
     setError(null);
     setAudioCache({});
   }, []);
@@ -277,6 +295,10 @@ export const PracticeProvider = ({ children }) => {
 
     clearPractice,
     clearAudioCache,
+
+    // Variable global para ID de partitura
+    currentPartituraId,
+    setPartituraId,
 
     hasActivePractice: !!currentPractice,
     isPracticeActive: !!currentPractice && !!currentCompas,

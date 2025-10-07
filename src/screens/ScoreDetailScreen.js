@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useScoreProgress } from '../hooks/useScoreProgress';
 import { usePredictions } from '../hooks/usePredictions';
+import { usePractice } from '../context/PracticeContext';
 
 const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }) => {
   const score = route.params?.score;
@@ -27,6 +28,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     hasPredictions,
     refreshData,
   } = usePredictions(score?.id);
+  const { setPartituraId } = usePractice();
   
   const [showStatus, setShowStatus] = useState(false);
 
@@ -47,8 +49,10 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
   const handleStartFromBeginning = () => {
     triggerVibration();
     
-    // Si la partitura ya está lista, navegar directamente
+    // Si la partitura ya está lista, establecer ID global y navegar
     if (isReady) {
+      console.log('🎵 Estableciendo ID de partitura global:', score.id);
+      setPartituraId(score.id);
       navigation.navigate('Piano', { score });
       return;
     }

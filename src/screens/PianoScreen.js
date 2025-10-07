@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,34 +7,57 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { usePractice } from '../context/PracticeContext';
 
 const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
   const score = route.params?.score;
   const playAudio = route.params?.playAudio;
+  const playTimestamp = route.params?.playTimestamp;
   const ttsUrl = route.params?.ttsUrl;
   const pianoUrl = route.params?.pianoUrl;
   
   // Contexto de práctica
-  const { playAudioFromUrl, playPreloadedAudio, preloadAudio, stopAudio, clearPreloadedSounds, isPlaying } = usePractice();
+  const { playAudioFromUrl, playPreloadedAudio, stopAudio, clearPreloadedSounds, isPlaying } = usePractice();
   
   // Estado local
   const [isReproducing, setIsReproducing] = useState(false);
-  const [hasPlayed, setHasPlayed] = useState(false);
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(true);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  
+  // Refs para evitar re-renders
+  const hasPlayedRef = useRef(false);
+  const lastTimestampRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const isPlayingRef = useRef(isPlaying);
+  const isReproducingRef = useRef(isReproducing);
+  const stopAudioRef = useRef(stopAudio);
+
+  // Mantener refs actualizados
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+  
+  useEffect(() => {
+    isReproducingRef.current = isReproducing;
+  }, [isReproducing]);
+  
+  useEffect(() => {
+    stopAudioRef.current = stopAudio;
+  }, [stopAudio]);
 
   // Función para reproducir ambos audios (ya precargados)
   const reproduceAudios = useCallback(async () => {
-    if (hasPlayed) {
-      console.log('🎵 Audio ya reproducido, saltando...');
+    if (!isMountedRef.current) {
+      console.log('🚫 Componente desmontado, cancelando reproducción');
+      return;
+    }
+
+    if (hasPlayedRef.current) {
+      console.log('🎵 Audio ya reproducido para este timestamp');
       return;
     }
     
     try {
       setIsReproducing(true);
-      setHasPlayed(true); // Marcar como reproducido inmediatamente
+      hasPlayedRef.current = true;
       console.log('🎵 Marcando audio como reproducido');
       
       console.log('🎵 Reproduciendo audio Piano (melodía)...');
@@ -44,6 +67,8 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         console.log('⚠️ Fallback a playAudioFromUrl para Piano');
         await playAudioFromUrl(pianoUrl, 'Piano');
       }
+      
+      if (!isMountedRef.current) return;
       
       console.log('🎵 Reproduciendo audio TTS (instrucciones)...');
       try {
@@ -57,52 +82,69 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     } catch (error) {
       console.error('❌ Error reproduciendo audios:', error);
     } finally {
-      setIsReproducing(false);
-    }
-  }, [playPreloadedAudio, playAudioFromUrl, pianoUrl, ttsUrl, hasPlayed]);
-
-  // Resetear estado cuando se entra a la pantalla (solo si viene de ControlsScreen)
-  useFocusEffect(
-    useCallback(() => {
-      // Solo resetear si viene con playAudio=true (desde ControlsScreen) y no se ha inicializado
-      if (playAudio && !hasInitialized) {
-        setHasPlayed(false);
-        setShouldAutoPlay(true);
-        setHasInitialized(true);
-        console.log('🔄 PianoScreen: Inicializando estado para reproducción');
-      } else if (playAudio && hasInitialized) {
-        console.log('🔄 PianoScreen: Ya inicializado, no reseteando estado');
+      if (isMountedRef.current) {
+        setIsReproducing(false);
       }
-    }, [playAudio, hasInitialized])
-  );
-
-  // Efecto para reproducir audio cuando se carga la pantalla
-  useEffect(() => {
-    if (playAudio && ttsUrl && pianoUrl && !hasPlayed && shouldAutoPlay) {
-      console.log('🎵 PianoScreen: Iniciando reproducción de audios...');
-      reproduceAudios();
-    } else if (playAudio && hasPlayed) {
-      console.log('🎵 PianoScreen: Audio ya reproducido, no se reproduce automáticamente');
-    } else if (playAudio && !shouldAutoPlay) {
-      console.log('🎵 PianoScreen: Auto-reproducción deshabilitada');
     }
-  }, [playAudio, ttsUrl, pianoUrl, hasPlayed, shouldAutoPlay, reproduceAudios]);
+  }, [playPreloadedAudio, playAudioFromUrl, pianoUrl, ttsUrl]);
+
+  // Efecto para reproducir cuando cambia el timestamp
+  useEffect(() => {
+    if (playAudio && playTimestamp && lastTimestampRef.current !== playTimestamp) {
+      console.log('✅ Nuevo timestamp detectado:', playTimestamp);
+      lastTimestampRef.current = playTimestamp;
+      hasPlayedRef.current = false;
+      
+      // Pequeño delay para asegurar que el componente esté listo
+      const timeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          reproduceAudios();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [playAudio, playTimestamp, reproduceAudios]);
+
+  // Efecto para limpiar al desmontar (SOLO navigation como dependencia)
+  useEffect(() => {
+    isMountedRef.current = true;
+    console.log('🎬 PianoScreen montado');
+
+    // Listener para cuando pierde el foco
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      console.log('🧹 PianoScreen blur - limpiando audio');
+      if (isPlayingRef.current || isReproducingRef.current) {
+        console.log('🛑 Deteniendo audio por blur...');
+        stopAudioRef.current();
+      }
+    });
+
+    return () => {
+      console.log('🧹 PianoScreen desmontando');
+      isMountedRef.current = false;
+      unsubscribeBlur();
+      
+      // Limpiar audio al desmontar
+      if (isPlayingRef.current || isReproducingRef.current) {
+        console.log('🛑 Deteniendo audio por unmount...');
+        stopAudioRef.current();
+      }
+    };
+  }, [navigation]); // ✅ SOLO navigation como dependencia
 
   const handleGoBack = async () => {
     triggerVibration();
     
     // Detener audio si está reproduciéndose
     if (isPlaying || isReproducing) {
-      console.log('🛑 Deteniendo audio al salir de PianoScreen...');
+      console.log('🛑 Deteniendo audio al presionar volver...');
       await stopAudio();
       setIsReproducing(false);
     }
     
-    // Limpiar audios precargados para evitar conflictos
+    // Limpiar audios precargados
     await clearPreloadedSounds();
-    
-    // Limpiar estado para evitar conflictos
-    setHasPlayed(true); // Marcar como reproducido para evitar reproducción automática
     
     stop();
     navigation.goBack();
@@ -113,11 +155,9 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     navigation.navigate('Controls', { score });
   };
 
-
   // Función para determinar si necesita separar el texto según el tamaño
   const getControlesText = () => {
-    // Si el tamaño de fuente es grande o extra grande, separar el texto
-    if ( settings?.fontSize === 'extraLarge') {
+    if (settings?.fontSize === 'extraLarge') {
       return 'CONTROLES';
     }
     return 'CONTROLES';
@@ -134,7 +174,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
   // Obtener configuraciones dinámicas
   const sizeConfig = getCurrentSizeConfig();
   const contrastConfig = getCurrentContrastConfig();
-
 
   if (!score) {
     return (
@@ -171,47 +210,46 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         </TouchableOpacity>
       </View>
 
-        <View style={styles.content}>
-          <ScrollView
-            style={styles.pianoScrollContainer}
-            contentContainerStyle={styles.pianoScrollContent}
-            showsVerticalScrollIndicator={true}
-            showsHorizontalScrollIndicator={true}
-          >
-            <View style={styles.pianoContainer}>
-              <Image
-                source={require('../../img/piano-stretched.png')}
-                style={[
-                  styles.pianoImage,
-                  {
-                    minHeight: sizeConfig.buttonText * 8,
-                    maxHeight: sizeConfig.buttonText * 12,
-                  }
-                ]}
-                resizeMode="contain"
-                accessibilityLabel="Teclado de piano"
-              />
-            </View>
-          </ScrollView>
-
-
-          <View style={styles.pianoControls}>
-            <TouchableOpacity
+      <View style={styles.content}>
+        <ScrollView
+          style={styles.pianoScrollContainer}
+          contentContainerStyle={styles.pianoScrollContent}
+          showsVerticalScrollIndicator={true}
+          showsHorizontalScrollIndicator={true}
+        >
+          <View style={styles.pianoContainer}>
+            <Image
+              source={require('../../img/piano-stretched.png')}
               style={[
-                styles.controlsButton,
+                styles.pianoImage,
                 {
-                  paddingVertical: getControlesPadding(),
+                  minHeight: sizeConfig.buttonText * 8,
+                  maxHeight: sizeConfig.buttonText * 12,
                 }
               ]}
-              onPress={handleControls}
-              accessibilityLabel="Controles"
-              accessibilityRole="button"
-              accessibilityHint="Abrir controles de reproducción"
-            >
-              <Text style={styles.controlsButtonText}>{getControlesText()}</Text>
-            </TouchableOpacity>
+              resizeMode="contain"
+              accessibilityLabel="Teclado de piano"
+            />
           </View>
+        </ScrollView>
+
+        <View style={styles.pianoControls}>
+          <TouchableOpacity
+            style={[
+              styles.controlsButton,
+              {
+                paddingVertical: getControlesPadding(),
+              }
+            ]}
+            onPress={handleControls}
+            accessibilityLabel="Controles"
+            accessibilityRole="button"
+            accessibilityHint="Abrir controles de reproducción"
+          >
+            <Text style={styles.controlsButtonText}>{getControlesText()}</Text>
+          </TouchableOpacity>
         </View>
+      </View>
     </SafeAreaView>
   );
 };

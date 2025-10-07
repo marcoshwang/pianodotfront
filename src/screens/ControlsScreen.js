@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { usePractice } from '../context/PracticeContext';
 import { startPractice } from '../../services/pianodotApi';
 
@@ -30,11 +31,26 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     playPreloadedAudio,
     preloadAudio,
     stopAudio,
+    isPlaying,
     hasActivePractice,
+    currentPartituraId,
   } = usePractice();
 
   // Estados locales
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+
+  // Limpiar audio cuando se sale de ControlsScreen
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // Se ejecuta cuando sales de la pantalla
+        console.log('🧹 Limpiando audio al salir de ControlsScreen...');
+        if (isPlaying) {
+          stopAudio();
+        }
+      };
+    }, [isPlaying, stopAudio])
+  );
 
   // No inicializar práctica automáticamente
   // La práctica se iniciará solo cuando se presione "REPRODUCIR COMPÁS"
@@ -79,11 +95,15 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       await preloadAudio(ttsUrl, 'TTS');
       console.log('✅ Audios precargados');
       
+      // TIMESTAMP ÚNICO para forzar reproducción
+      const playTimestamp = Date.now();
+      
       // Navegar a PianoScreen para reproducir los audios
       console.log('🎵 Navegando a PianoScreen para reproducir audios...');
       navigation.navigate('Piano', { 
         score,
         playAudio: true,
+        playTimestamp, // ← NUEVO: timestamp único
         ttsUrl,
         pianoUrl
       });
@@ -100,9 +120,41 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
   const handleRepeatCompas = async () => {
     try {
       triggerVibration();
-      console.log('🔄 Repitiendo compás');
-      await repeatCurrentCompas();
-      console.log('✅ Compás repetido');
+      console.log('🔄 Repitiendo compás actual...');
+      console.log('🔍 ID de partitura global:', currentPartituraId);
+      
+      if (!currentPartituraId) {
+        console.warn('⚠️ No hay ID de partitura, no se puede repetir compás');
+        Alert.alert('Error', 'No hay una partitura seleccionada. Primero inicia una práctica.');
+        return;
+      }
+      
+      const updatedPractice = await repeatCurrentCompas();
+      console.log('✅ Compás repetido exitosamente');
+      console.log('🎵 Navegando a PianoScreen para reproducir audios repetidos...');
+      
+      // URLs de los audios
+      const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+      const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      
+      // Precargar audios nuevamente
+      console.log('🎵 Precargando audios para repetir...');
+      await preloadAudio(pianoUrl, 'Piano');
+      await preloadAudio(ttsUrl, 'TTS');
+      console.log('✅ Audios precargados para repetir');
+      
+      // TIMESTAMP ÚNICO para forzar reproducción
+      const playTimestamp = Date.now();
+      
+      // Navegar a PianoScreen con los nuevos audios
+      navigation.navigate('Piano', {
+        score: { id: currentPartituraId },
+        playAudio: true,
+        playTimestamp, // ← NUEVO: timestamp único
+        pianoUrl,
+        ttsUrl
+      });
+      
     } catch (error) {
       console.error('❌ Error repitiendo compás:', error);
       Alert.alert('Error', 'No se pudo repetir el compás');
@@ -201,11 +253,11 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               styles.controlButton,
               {
                 paddingVertical: getControlPadding(),
-                opacity: practiceLoading ? 0.7 : 1,
+                opacity: (practiceLoading || !hasActivePractice) ? 0.7 : 1,
               }
             ]}
             onPress={handleRepeatCompas}
-            disabled={practiceLoading}
+            disabled={practiceLoading || !hasActivePractice}
             accessibilityLabel="Repetir compás"
             accessibilityRole="button"
             accessibilityHint="Presionar para repetir el compás actual"
@@ -219,11 +271,11 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               styles.controlButton,
               {
                 paddingVertical: getControlPadding(),
-                opacity: practiceLoading ? 0.7 : 1,
+                opacity: (practiceLoading || !hasActivePractice) ? 0.7 : 1,
               }
             ]}
             onPress={handleNextCompas}
-            disabled={practiceLoading}
+            disabled={practiceLoading || !hasActivePractice}
             accessibilityLabel="Siguiente compás"
             accessibilityRole="button"
             accessibilityHint="Presionar para avanzar al siguiente compás"
@@ -237,11 +289,11 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               styles.controlButton,
               {
                 paddingVertical: getControlPadding(),
-                opacity: practiceLoading ? 0.7 : 1,
+                opacity: (practiceLoading || !hasActivePractice) ? 0.7 : 1,
               }
             ]}
             onPress={handlePrevCompas}
-            disabled={practiceLoading}
+            disabled={practiceLoading || !hasActivePractice}
             accessibilityLabel="Anterior compás"
             accessibilityRole="button"
             accessibilityHint="Presionar para retroceder al compás anterior"

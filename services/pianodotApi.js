@@ -324,15 +324,22 @@ export const getPrevCompas = async (partituraId) => {
  */
 export const repeatCompas = async (partituraId) => {
   try {
-    const response = await fetchWithTimeout(`${BASE_URL}/practice/${partituraId}/repeat`, {
+    console.log(`🔄 Llamando a repeat compás para partitura: ${partituraId}`);
+    const url = `${BASE_URL}/practice/${partituraId}/repeat`;
+    console.log(`🔗 URL: ${url}`);
+    
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: createHeaders(),
     });
     
+    console.log(`📡 Respuesta del servidor: ${response.status}`);
     await handleResponse(response);
-    return await response.json();
+    const result = await response.json();
+    console.log('✅ Compás repetido exitosamente:', result);
+    return result;
   } catch (error) {
-    console.error('Error repitiendo compás:', error);
+    console.error('❌ Error repitiendo compás:', error);
     throw error;
   }
 };

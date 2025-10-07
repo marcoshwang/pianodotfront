@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Audio } from 'expo-av';
 
 export const useAudioPlayer = () => {
@@ -6,6 +6,9 @@ export const useAudioPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState(null);
   const [preloadedSounds, setPreloadedSounds] = useState({});
+  
+  // Usar ref para mantener referencia al sound actual sin causar re-renders
+  const soundRef = useRef(null);
 
   // Configurar modo de audio una sola vez
   const configureAudioMode = useCallback(async () => {
@@ -80,6 +83,7 @@ export const useAudioPlayer = () => {
       // Reproducir el audio precargado
       await preloadedSound.playAsync();
       setSound(preloadedSound);
+      soundRef.current = preloadedSound; // Actualizar ref
       
       // Verificar que realmente esté reproduciéndose
       const playStatus = await preloadedSound.getStatusAsync();
@@ -174,8 +178,13 @@ export const useAudioPlayer = () => {
       console.log(`🎵 Reproduciendo audio ${type} desde URL: ${audioUrl}`);
       
       // Detener audio anterior si existe
-      if (sound) {
-        await stopAudio();
+      if (soundRef.current) {
+        try {
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+        } catch (err) {
+          console.log('⚠️ Error deteniendo audio anterior:', err);
+        }
       }
 
       // Configurar modo de audio
@@ -199,6 +208,7 @@ export const useAudioPlayer = () => {
       );
 
       setSound(newSound);
+      soundRef.current = newSound;
       console.log(`✅ Audio ${type} reproduciéndose...`);
 
       // Esperar a que termine la reproducción usando setOnPlaybackStatusUpdate
@@ -224,15 +234,16 @@ export const useAudioPlayer = () => {
       setIsPlaying(false);
       throw err;
     }
-  }, [sound, configureAudioMode]);
+  }, [configureAudioMode]);
 
   // Detener audio
   const stopAudio = useCallback(async () => {
     try {
-      if (sound) {
+      if (soundRef.current) {
         console.log('🛑 Deteniendo audio...');
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
         setSound(null);
         setIsPlaying(false);
         console.log('✅ Audio detenido');
@@ -240,7 +251,7 @@ export const useAudioPlayer = () => {
     } catch (error) {
       console.error('❌ Error deteniendo audio:', error);
     }
-  }, [sound]);
+  }, []);
 
   // Limpiar audios precargados
   const clearPreloadedSounds = useCallback(async () => {
@@ -248,7 +259,11 @@ export const useAudioPlayer = () => {
       console.log('🧹 Limpiando audios precargados...');
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
-          await sound.unloadAsync();
+          try {
+            await sound.unloadAsync();
+          } catch (err) {
+            console.log(`⚠️ Error limpiando audio ${type}:`, err);
+          }
         }
       }
       setPreloadedSounds({});
@@ -258,14 +273,17 @@ export const useAudioPlayer = () => {
     }
   }, [preloadedSounds]);
 
-  // Limpiar recursos al desmontar
+  // Limpiar recursos al desmontar - SOLO UNA VEZ
   useEffect(() => {
     return () => {
-      if (sound) {
-        sound.unloadAsync();
+      // Usar soundRef en lugar de sound para evitar dependencias
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(err => {
+          console.log('⚠️ Error limpiando audio al desmontar:', err);
+        });
       }
     };
-  }, [sound]);
+  }, []); // ✅ Array vacío - solo se ejecuta al montar/desmontar
 
   return {
     playAudioFromUrl,
