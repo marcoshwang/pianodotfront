@@ -41,7 +41,7 @@ export const useAudioPlayer = () => {
           volume: 1.0,
           rate: 1.0,
           shouldCorrectPitch: false,
-          progressUpdateIntervalMillis: 1000,
+          progressUpdateIntervalMillis: 500, // Actualizar cada 500ms
           androidImplementation: 'MediaPlayer'
         }
       );
@@ -60,7 +60,7 @@ export const useAudioPlayer = () => {
     }
   }, [configureAudioMode]);
 
-  // Reproducir audio precargado
+  // ✅ SOLUCION: Reproducir audio precargado usando callback en lugar de polling
   const playPreloadedAudio = useCallback(async (type = 'audio') => {
     try {
       const preloadedSound = preloadedSounds[type];
@@ -73,95 +73,97 @@ export const useAudioPlayer = () => {
       setError(null);
 
       // Verificar estado antes de reproducir
-      const status = await preloadedSound.getStatusAsync();
+      const statusBefore = await preloadedSound.getStatusAsync();
       console.log(`🔍 Estado antes de reproducir ${type}:`, {
-        isLoaded: status.isLoaded,
-        isPlaying: status.isPlaying,
-        durationMillis: status.durationMillis
+        isLoaded: statusBefore.isLoaded,
+        isPlaying: statusBefore.isPlaying,
+        durationMillis: statusBefore.durationMillis
       });
 
-      // Reproducir el audio precargado
-      await preloadedSound.playAsync();
-      setSound(preloadedSound);
-      soundRef.current = preloadedSound; // Actualizar ref
-      
-      // Verificar que realmente esté reproduciéndose
-      const playStatus = await preloadedSound.getStatusAsync();
-      console.log(`🔍 Estado después de playAsync ${type}:`, {
-        isLoaded: playStatus.isLoaded,
-        isPlaying: playStatus.isPlaying,
-        durationMillis: playStatus.durationMillis
-      });
-      
-      console.log(`✅ Audio ${type} reproduciéndose...`);
-
-      // Esperar a que termine usando polling más frecuente
+      // ✅ CLAVE: Configurar el callback ANTES de reproducir
       return new Promise((resolve, reject) => {
-        let isResolved = false;
-        
-        // Timeout de seguridad (60 segundos)
-        const timeout = setTimeout(() => {
-          if (!isResolved) {
-            isResolved = true;
-            console.log(`⏰ Timeout para audio ${type}, asumiendo que terminó`);
-            setIsPlaying(false);
-            resolve(true);
-          }
-        }, 60000);
-        
-        const checkStatus = async () => {
-          try {
-            const status = await preloadedSound.getStatusAsync();
-            
-            if (status.isLoaded && status.didJustFinish && !isResolved) {
-              isResolved = true;
-              clearTimeout(timeout);
+        let hasFinished = false;
+        let timeoutId = null;
+
+        // Callback para monitorear el estado de reproducción
+        preloadedSound.setOnPlaybackStatusUpdate((status) => {
+          if (hasFinished) return; // Ya terminó, ignorar actualizaciones
+
+          if (status.isLoaded) {
+            // Log solo ocasionalmente para reducir spam (cada ~2 segundos)
+            if (status.positionMillis % 2000 < 500) {
+              console.log(`🔍 Reproduciendo ${type}:`, {
+                position: Math.round(status.positionMillis / 1000),
+                duration: Math.round(status.durationMillis / 1000),
+                isPlaying: status.isPlaying
+              });
+            }
+
+            // ✅ Verificar si terminó
+            if (status.didJustFinish) {
+              hasFinished = true;
+              if (timeoutId) clearTimeout(timeoutId);
+              
               console.log(`✅ Audio ${type} terminado correctamente`);
               setIsPlaying(false);
+              
+              // Limpiar el callback
+              preloadedSound.setOnPlaybackStatusUpdate(null);
               resolve(true);
-            } else if (status.isLoaded && status.durationMillis && status.positionMillis >= status.durationMillis - 100 && !isResolved) {
-              // Verificar si el audio ha terminado basándose en la duración (con margen de 100ms)
-              isResolved = true;
-              clearTimeout(timeout);
-              console.log(`✅ Audio ${type} terminado por duración`);
-              setIsPlaying(false);
-              resolve(true);
-            } else if (status.error && !isResolved) {
-              isResolved = true;
-              clearTimeout(timeout);
-              console.error(`❌ Error en reproducción ${type}:`, status.error);
-              setIsPlaying(false);
-              reject(new Error(status.error));
-            } else if (!isResolved && status.isLoaded && status.isPlaying) {
-              // Solo logear cada 2 segundos para evitar spam
-              if (Math.random() < 0.1) { // 10% de probabilidad de logear
-                console.log(`🔍 Estado audio ${type}:`, {
-                  isLoaded: status.isLoaded,
-                  isPlaying: status.isPlaying,
-                  didJustFinish: status.didJustFinish,
-                  durationMillis: status.durationMillis,
-                  positionMillis: status.positionMillis
-                });
-              }
-              // Verificar nuevamente en 500ms si está reproduciéndose
-              setTimeout(checkStatus, 500);
-            } else if (!isResolved) {
-              // Verificar nuevamente en 1000ms si no está reproduciéndose
-              setTimeout(checkStatus, 1000);
             }
-          } catch (err) {
-            if (!isResolved) {
-              isResolved = true;
-              clearTimeout(timeout);
-              console.error(`❌ Error verificando estado ${type}:`, err);
-              setIsPlaying(false);
-              reject(err);
-            }
+          } else if (status.error) {
+            hasFinished = true;
+            if (timeoutId) clearTimeout(timeoutId);
+            
+            console.error(`❌ Error en reproducción ${type}:`, status.error);
+            setIsPlaying(false);
+            
+            // Limpiar el callback
+            preloadedSound.setOnPlaybackStatusUpdate(null);
+            reject(new Error(status.error));
           }
-        };
-        
-        // Iniciar verificación después de un momento
-        setTimeout(checkStatus, 1000);
+        });
+
+        // ✅ Timeout de seguridad aumentado a 2 minutos (120 segundos)
+        timeoutId = setTimeout(() => {
+          if (!hasFinished) {
+            hasFinished = true;
+            console.log(`⏰ Timeout para audio ${type} después de 120s, asumiendo que terminó`);
+            setIsPlaying(false);
+            
+            // Limpiar el callback
+            preloadedSound.setOnPlaybackStatusUpdate(null);
+            resolve(true);
+          }
+        }, 120000); // 120 segundos = 2 minutos
+
+        // Iniciar reproducción DESPUÉS de configurar el callback
+        preloadedSound.playAsync().then(async () => {
+          setSound(preloadedSound);
+          soundRef.current = preloadedSound;
+          
+          // Verificar que realmente esté reproduciéndose
+          const playStatus = await preloadedSound.getStatusAsync();
+          console.log(`🔍 Estado después de playAsync ${type}:`, {
+            isLoaded: playStatus.isLoaded,
+            isPlaying: playStatus.isPlaying,
+            durationMillis: playStatus.durationMillis
+          });
+          
+          console.log(`✅ Audio ${type} reproduciéndose...`);
+        }).catch((err) => {
+          if (!hasFinished) {
+            hasFinished = true;
+            if (timeoutId) clearTimeout(timeoutId);
+            
+            console.error(`❌ Error iniciando reproducción ${type}:`, err);
+            setIsPlaying(false);
+            
+            // Limpiar el callback
+            preloadedSound.setOnPlaybackStatusUpdate(null);
+            reject(err);
+          }
+        });
       });
 
     } catch (err) {
@@ -202,7 +204,7 @@ export const useAudioPlayer = () => {
           volume: 1.0,
           rate: 1.0,
           shouldCorrectPitch: false,
-          progressUpdateIntervalMillis: 1000,
+          progressUpdateIntervalMillis: 500,
           androidImplementation: 'MediaPlayer'
         }
       );
@@ -213,19 +215,46 @@ export const useAudioPlayer = () => {
 
       // Esperar a que termine la reproducción usando setOnPlaybackStatusUpdate
       return new Promise((resolve, reject) => {
+        let hasFinished = false;
+        let timeoutId = null;
+
         newSound.setOnPlaybackStatusUpdate((status) => {
+          if (hasFinished) return;
+
           if (status.isLoaded) {
             if (status.didJustFinish) {
+              hasFinished = true;
+              if (timeoutId) clearTimeout(timeoutId);
+              
               console.log(`✅ Audio ${type} terminado correctamente`);
               setIsPlaying(false);
+              
+              newSound.setOnPlaybackStatusUpdate(null);
               resolve(true);
             }
           } else if (status.error) {
+            hasFinished = true;
+            if (timeoutId) clearTimeout(timeoutId);
+            
             console.error(`❌ Error en reproducción ${type}:`, status.error);
             setIsPlaying(false);
+            
+            newSound.setOnPlaybackStatusUpdate(null);
             reject(new Error(status.error));
           }
         });
+
+        // Timeout de seguridad de 2 minutos
+        timeoutId = setTimeout(() => {
+          if (!hasFinished) {
+            hasFinished = true;
+            console.log(`⏰ Timeout para audio ${type} después de 120s`);
+            setIsPlaying(false);
+            
+            newSound.setOnPlaybackStatusUpdate(null);
+            resolve(true);
+          }
+        }, 120000);
       });
 
     } catch (err) {
@@ -241,6 +270,10 @@ export const useAudioPlayer = () => {
     try {
       if (soundRef.current) {
         console.log('🛑 Deteniendo audio...');
+        
+        // Limpiar callbacks antes de detener
+        soundRef.current.setOnPlaybackStatusUpdate(null);
+        
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
         soundRef.current = null;
@@ -260,6 +293,8 @@ export const useAudioPlayer = () => {
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
           try {
+            // Limpiar callback antes de descargar
+            sound.setOnPlaybackStatusUpdate(null);
             await sound.unloadAsync();
           } catch (err) {
             console.log(`⚠️ Error limpiando audio ${type}:`, err);
@@ -278,6 +313,7 @@ export const useAudioPlayer = () => {
     return () => {
       // Usar soundRef en lugar de sound para evitar dependencias
       if (soundRef.current) {
+        soundRef.current.setOnPlaybackStatusUpdate(null);
         soundRef.current.unloadAsync().catch(err => {
           console.log('⚠️ Error limpiando audio al desmontar:', err);
         });
