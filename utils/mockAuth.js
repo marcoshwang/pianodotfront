@@ -3,7 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Importar funciones de Auth de forma lazy para evitar problemas de inicialización
-let signIn, signUp, signOut, currentAuthenticatedUser, currentSession;
+let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession, fetchUserAttributes;
 
 const getAuthFunctions = async () => {
   if (!signIn) {
@@ -11,10 +11,11 @@ const getAuthFunctions = async () => {
     signIn = authModule.signIn;
     signUp = authModule.signUp;
     signOut = authModule.signOut;
-    currentAuthenticatedUser = authModule.currentAuthenticatedUser;
-    currentSession = authModule.currentSession;
+    getCurrentUserFn = authModule.getCurrentUser;
+    fetchAuthSession = authModule.fetchAuthSession;
+    fetchUserAttributes = authModule.fetchUserAttributes;
   }
-  return { signIn, signUp, signOut, currentAuthenticatedUser, currentSession };
+  return { signIn, signUp, signOut, getCurrentUser: getCurrentUserFn, fetchAuthSession, fetchUserAttributes };
 };
 
 // Claves para AsyncStorage
@@ -33,9 +34,9 @@ let currentUser = null;
  */
 export const saveAuthData = async (cognitoUser) => {
   try {
-    const { currentSession } = await getAuthFunctions();
+    const { fetchAuthSession, fetchUserAttributes } = await getAuthFunctions();
     // Obtener los tokens de Cognito
-    const session = await currentSession();
+    const session = await fetchAuthSession();
     const idToken = session.tokens.idToken.toString();
     const refreshToken = session.tokens.refreshToken?.toString() || null;
     
@@ -43,16 +44,33 @@ export const saveAuthData = async (cognitoUser) => {
     await AsyncStorage.setItem(TOKEN_KEY, idToken);
     console.log('✅ IdToken guardado en AsyncStorage');
     
-    // Guardar refresh token
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    console.log('✅ Refresh token guardado');
+    // Guardar refresh token solo si existe
+    if (refreshToken) {
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      console.log('✅ Refresh token guardado');
+    } else {
+      // Si no hay refresh token, eliminar el que pueda existir
+      await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+      console.log('⚠️ No hay refresh token disponible');
+    }
+    
+    // Obtener atributos del usuario (en Amplify v6 se obtienen por separado)
+    let userAttributes = {};
+    try {
+      userAttributes = await fetchUserAttributes();
+    } catch (attrError) {
+      console.log('⚠️ No se pudieron obtener atributos del usuario:', attrError);
+      // Usar datos básicos del usuario
+      userAttributes = {
+        email: cognitoUser.userId || cognitoUser.signInDetails?.loginId,
+      };
+    }
     
     // Guardar datos del usuario
-    const userAttributes = cognitoUser.attributes || {};
     const userData = {
-      id: cognitoUser.username,
-      email: userAttributes.email,
-      name: userAttributes.name || userAttributes.email,
+      id: cognitoUser.userId || cognitoUser.username,
+      email: userAttributes.email || cognitoUser.userId || cognitoUser.signInDetails?.loginId,
+      name: userAttributes.name || userAttributes.email || cognitoUser.userId,
     };
     
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
@@ -74,21 +92,31 @@ export const loadAuthData = async () => {
   try {
     // Primero intentar obtener sesión activa de Cognito
     try {
-      const { currentAuthenticatedUser, currentSession } = await getAuthFunctions();
-      const user = await currentAuthenticatedUser();
-      const session = await currentSession();
+      const { getCurrentUser, fetchAuthSession, fetchUserAttributes } = await getAuthFunctions();
+      const user = await getCurrentUser();
+      const session = await fetchAuthSession();
       const idToken = session.tokens.idToken.toString();
       
       if (idToken && user) {
         // Guardar en AsyncStorage para acceso rápido
         await AsyncStorage.setItem(TOKEN_KEY, idToken);
         
+        // Obtener atributos del usuario
+        let userAttributes = {};
+        try {
+          userAttributes = await fetchUserAttributes();
+        } catch (attrError) {
+          console.log('⚠️ No se pudieron obtener atributos:', attrError);
+          userAttributes = {
+            email: user.userId || user.signInDetails?.loginId,
+          };
+        }
+        
         // Obtener datos del usuario
-        const userAttributes = user.attributes || {};
         const userData = {
-          id: user.username,
-          email: userAttributes.email,
-          name: userAttributes.name || userAttributes.email,
+          id: user.userId || user.username,
+          email: userAttributes.email || user.userId || user.signInDetails?.loginId,
+          name: userAttributes.name || userAttributes.email || user.userId,
         };
         
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
@@ -99,19 +127,23 @@ export const loadAuthData = async () => {
         return true;
       }
     } catch (cognitoError) {
-      console.log('⚠️ No hay sesión activa de Cognito');
+      console.log('⚠️ No hay sesión activa de Cognito:', cognitoError.message);
+      // Si no hay sesión de Cognito, limpiar AsyncStorage también
+      // porque los tokens guardados ya no son válidos
+      await Promise.all([
+        AsyncStorage.removeItem(TOKEN_KEY),
+        AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
+        AsyncStorage.removeItem(USER_KEY),
+      ]);
+      currentUser = null;
+      isAuthenticated = false;
+      return false;
     }
     
-    // Fallback: intentar cargar desde AsyncStorage
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
-    if (token) {
-      const userData = await AsyncStorage.getItem(USER_KEY);
-      currentUser = userData ? JSON.parse(userData) : null;
-      isAuthenticated = true;
-      console.log('✅ Datos de autenticación cargados desde AsyncStorage');
-      return true;
-    }
-    
+    // NO usar fallback de AsyncStorage si no hay sesión de Cognito válida
+    // Los tokens en AsyncStorage pueden estar expirados o inválidos
+    currentUser = null;
+    isAuthenticated = false;
     return false;
   } catch (error) {
     console.error('❌ Error cargando datos de autenticación:', error);
@@ -147,7 +179,16 @@ export const mockLogin = async () => {
  */
 export const mockLogout = async () => {
   try {
-    // Limpiar AsyncStorage
+    // Cerrar sesión de Cognito primero
+    try {
+      const { signOut } = await getAuthFunctions();
+      await signOut();
+      console.log('✅ Sesión de Cognito cerrada');
+    } catch (cognitoError) {
+      console.log('⚠️ No había sesión de Cognito activa');
+    }
+    
+    // Limpiar AsyncStorage completamente
     await Promise.all([
       AsyncStorage.removeItem(TOKEN_KEY),
       AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
@@ -157,7 +198,7 @@ export const mockLogout = async () => {
     isAuthenticated = false;
     currentUser = null;
     
-    console.log('✅ Sesión cerrada y datos limpiados');
+    console.log('✅ Sesión cerrada y datos limpiados completamente');
     return true;
   } catch (error) {
     console.error('❌ Error cerrando sesión:', error);
@@ -165,6 +206,40 @@ export const mockLogout = async () => {
     isAuthenticated = false;
     currentUser = null;
     return false;
+  }
+};
+
+/**
+ * Limpiar completamente todos los datos de autenticación (útil para debugging)
+ * @returns {Promise<void>}
+ */
+export const clearAllAuthData = async () => {
+  try {
+    console.log('🧹 Limpiando todos los datos de autenticación...');
+    
+    // Cerrar sesión de Cognito
+    try {
+      const { signOut } = await getAuthFunctions();
+      await signOut();
+    } catch (e) {
+      // Ignorar si no hay sesión
+    }
+    
+    // Limpiar AsyncStorage
+    await Promise.all([
+      AsyncStorage.removeItem(TOKEN_KEY),
+      AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
+      AsyncStorage.removeItem(USER_KEY),
+    ]);
+    
+    // Limpiar estado en memoria
+    isAuthenticated = false;
+    currentUser = null;
+    
+    console.log('✅ Todos los datos de autenticación limpiados');
+  } catch (error) {
+    console.error('❌ Error limpiando datos de autenticación:', error);
+    throw error;
   }
 };
 
@@ -192,24 +267,50 @@ export const getAuthToken = async () => {
   try {
     // Primero intentar obtener desde Cognito session (más confiable)
     try {
-      const { currentSession } = await getAuthFunctions();
-      const session = await currentSession();
-      const idToken = session.tokens.idToken.toString();
+      const { fetchAuthSession } = await getAuthFunctions();
+      const session = await fetchAuthSession();
+      
+      // IMPORTANTE: Usar idToken, NO accessToken
+      // API Gateway con Cognito User Pool Authorizer requiere IdToken
+      const idToken = session.tokens.idToken?.toString();
+      
       if (idToken) {
+        console.log('✅ IdToken obtenido de Cognito session');
+        console.log('🔑 IdToken (primeros 50 chars):', idToken.substring(0, 50));
+        
+        // Verificar que sea un JWT válido
+        if (idToken.startsWith('eyJ')) {
+          console.log('✅ IdToken es un JWT válido');
+        } else {
+          console.warn('⚠️ IdToken no parece ser un JWT válido');
+        }
+        
         // Actualizar AsyncStorage con el token actual
         await AsyncStorage.setItem(TOKEN_KEY, idToken);
         return idToken;
+      } else {
+        console.warn('⚠️ No se encontró idToken en la sesión');
+        // Log de los tokens disponibles para debugging
+        console.log('📋 Tokens disponibles:', {
+          hasIdToken: !!session.tokens.idToken,
+          hasAccessToken: !!session.tokens.accessToken,
+          hasRefreshToken: !!session.tokens.refreshToken,
+        });
       }
     } catch (cognitoError) {
       console.log('⚠️ No hay sesión activa de Cognito, intentando AsyncStorage...');
+      console.log('❌ Error de Cognito:', cognitoError.message);
     }
     
     // Fallback a AsyncStorage
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token) {
+      console.log('✅ Token obtenido de AsyncStorage');
+      console.log('🔑 Token (primeros 50 chars):', token.substring(0, 50));
       return token;
     }
     
+    console.warn('⚠️ No se encontró token ni en Cognito ni en AsyncStorage');
     return null;
   } catch (error) {
     console.error('❌ Error obteniendo token:', error);
@@ -282,4 +383,5 @@ export default {
   refreshToken,
   saveAuthData,
   loadAuthData,
+  clearAllAuthData,
 };

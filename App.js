@@ -172,9 +172,20 @@ export default function App() {
     const loadAuth = async () => {
       try {
         const { loadAuthData } = await import('./utils/mockAuth');
-        await loadAuthData();
+        const hasAuth = await loadAuthData();
+        
+        if (!hasAuth) {
+          console.log('ℹ️ No hay sesión guardada, usuario no autenticado');
+        }
       } catch (error) {
         console.error('Error cargando autenticación:', error);
+        // Si hay error, limpiar datos por si acaso
+        try {
+          const { clearAllAuthData } = await import('./utils/mockAuth');
+          await clearAllAuthData();
+        } catch (clearError) {
+          console.error('Error limpiando datos:', clearError);
+        }
       } finally {
         setAuthLoaded(true);
       }

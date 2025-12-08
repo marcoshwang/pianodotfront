@@ -106,14 +106,30 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const practiceResponse = await startPractice(score.id);
       console.log('✅ Archivos generados:', practiceResponse);
       
-      // URLs de los audios usando BASE_URL centralizado
-      const baseURL = getBaseURL();
-      const ttsUrl = `${baseURL}/partituras/${score.id}/audio_tts/${compasActual}`;
-      const pianoUrl = `${baseURL}/partituras/${score.id}/audio_piano/${compasActual}`;
+      // Usar las URLs directas de S3 que vienen en la respuesta del backend
+      // El backend devuelve: { audio_piano: "https://s3...", audio_tts: "https://s3..." }
+      let pianoUrl, ttsUrl;
+      
+      if (practiceResponse?.audio_piano && practiceResponse?.audio_tts) {
+        // Usar URLs directas de S3
+        pianoUrl = practiceResponse.audio_piano;
+        ttsUrl = practiceResponse.audio_tts;
+        console.log('✅ Usando URLs directas de S3');
+        console.log('🎹 Piano URL:', pianoUrl.substring(0, 100) + '...');
+        console.log('🗣️ TTS URL:', ttsUrl.substring(0, 100) + '...');
+      } else {
+        // Fallback: construir URLs usando API Gateway (por si el backend no devuelve las URLs)
+        console.warn('⚠️ No se encontraron URLs directas, usando API Gateway como fallback');
+        const baseURL = getBaseURL();
+        ttsUrl = `${baseURL}/partituras/${score.id}/audio_tts/${compasActual}`;
+        pianoUrl = `${baseURL}/partituras/${score.id}/audio_piano/${compasActual}`;
+      }
       
       // Precargar audios
       console.log('🎵 Precargando audios...');
+      console.log('🎵 Precargando audio Piano desde URL:', pianoUrl.substring(0, 100) + '...');
       await preloadAudio(pianoUrl, 'Piano');
+      console.log('🎵 Precargando audio TTS desde URL:', ttsUrl.substring(0, 100) + '...');
       await preloadAudio(ttsUrl, 'TTS');
       console.log('✅ Audios precargados');
       
@@ -153,10 +169,18 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const updatedPractice = await repeatCurrentCompas();
       console.log('✅ Compás repetido exitosamente');
       
-      // URLs de los audios usando BASE_URL centralizado
-      const baseURL = getBaseURL();
-      const pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
-      const ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      // Usar URLs directas de S3 si están disponibles, sino usar API Gateway
+      let pianoUrl, ttsUrl;
+      if (updatedPractice?.audio_piano && updatedPractice?.audio_tts) {
+        pianoUrl = updatedPractice.audio_piano;
+        ttsUrl = updatedPractice.audio_tts;
+        console.log('✅ Usando URLs directas de S3 desde respuesta');
+      } else {
+        const baseURL = getBaseURL();
+        pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+        ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+        console.log('⚠️ Usando URLs de API Gateway como fallback');
+      }
       
       // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
@@ -197,10 +221,18 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const updatedPractice = await nextCompas();
       console.log('✅ Siguiente compás cargado:', updatedPractice);
       
-      // URLs de los audios usando BASE_URL centralizado
-      const baseURL = getBaseURL();
-      const pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
-      const ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      // Usar URLs directas de S3 si están disponibles, sino usar API Gateway
+      let pianoUrl, ttsUrl;
+      if (updatedPractice?.audio_piano && updatedPractice?.audio_tts) {
+        pianoUrl = updatedPractice.audio_piano;
+        ttsUrl = updatedPractice.audio_tts;
+        console.log('✅ Usando URLs directas de S3 desde respuesta');
+      } else {
+        const baseURL = getBaseURL();
+        pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+        ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+        console.log('⚠️ Usando URLs de API Gateway como fallback');
+      }
       
       // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
@@ -241,10 +273,18 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const updatedPractice = await prevCompas();
       console.log('✅ Compás anterior cargado:', updatedPractice);
       
-      // URLs de los audios usando BASE_URL centralizado
-      const baseURL = getBaseURL();
-      const pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
-      const ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      // Usar URLs directas de S3 si están disponibles, sino usar API Gateway
+      let pianoUrl, ttsUrl;
+      if (updatedPractice?.audio_piano && updatedPractice?.audio_tts) {
+        pianoUrl = updatedPractice.audio_piano;
+        ttsUrl = updatedPractice.audio_tts;
+        console.log('✅ Usando URLs directas de S3 desde respuesta');
+      } else {
+        const baseURL = getBaseURL();
+        pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+        ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+        console.log('⚠️ Usando URLs de API Gateway como fallback');
+      }
       
       // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');

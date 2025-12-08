@@ -6,30 +6,63 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Configuración base
 const BASE_URL = getBaseURL();
 const TIMEOUT = 10000;
-const TOKEN_KEY = '@pianodot:auth_token';
+// Usar la misma clave que mockAuth.js para consistencia
+const TOKEN_KEY = '@pianodot:id_token';
 
 // Función helper para crear headers con autenticación (versión async)
-const createHeaders = async (customHeaders = {}) => {
+const createHeaders = async (customHeaders = {}, options = {}) => {
   let token = null;
   try {
-    // Intentar obtener token desde AsyncStorage
-    token = await AsyncStorage.getItem(TOKEN_KEY);
+    // Primero intentar obtener token usando la función de mockAuth (más confiable)
+    token = await getAuthToken();
     if (!token) {
-      // Fallback a versión sync
-      token = getAuthTokenSync();
+      // Fallback: intentar obtener directamente desde AsyncStorage
+      token = await AsyncStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        // Último fallback a versión sync
+        token = getAuthTokenSync();
+      }
+    }
+    
+    // Log del token obtenido para debugging
+    if (token) {
+      console.log('✅ Token obtenido correctamente');
+      console.log('🔑 Token (primeros 50 chars):', token.substring(0, 50));
+      console.log('🔑 Token length:', token.length);
+      // Verificar que sea un JWT válido (debe empezar con "eyJ")
+      if (token.startsWith('eyJ')) {
+        console.log('✅ Token parece ser un JWT válido (IdToken)');
+      } else {
+        console.warn('⚠️ Token no parece ser un JWT válido');
+      }
+    } else {
+      console.warn('⚠️ NO SE PUDO OBTENER TOKEN');
     }
   } catch (error) {
-    console.error('Error obteniendo token:', error);
+    console.error('❌ Error obteniendo token:', error);
+    // Fallback a versión sync
     token = getAuthTokenSync();
   }
   
+  // Obtener headers base
+  const baseHeaders = getAuthHeaders();
+  
+  // Si se especifica excludeContentType, eliminar Content-Type (útil para FormData)
+  if (options.excludeContentType) {
+    delete baseHeaders['Content-Type'];
+    console.log('ℹ️ Content-Type excluido (para FormData)');
+  }
+  
   const headers = {
-    ...getAuthHeaders(),
+    ...baseHeaders,
     ...customHeaders,
   };
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    console.log('✅ Header Authorization agregado');
+  } else {
+    console.warn('⚠️ NO SE AGREGÓ HEADER Authorization - El request puede fallar con 403');
   }
   
   return headers;
@@ -94,6 +127,26 @@ export const uploadPartitura = async (fileData) => {
       const uploadURL = `${BASE_URL}/partituras`;
       console.log('Haciendo POST a:', uploadURL);
       
+      // Obtener headers con autenticación
+      // IMPORTANTE: excludeContentType=true para FormData (fetch lo establece automáticamente)
+      const headers = await createHeaders(
+        {
+          'Accept': 'application/json',
+        },
+        {
+          excludeContentType: true, // Excluir Content-Type para que fetch lo establezca automáticamente
+        }
+      );
+      
+      // Log del token para debugging (solo primeros caracteres por seguridad)
+      if (headers['Authorization']) {
+        const tokenPreview = headers['Authorization'].substring(0, 30) + '...';
+        console.log('🔑 Token enviado (preview):', tokenPreview);
+        console.log('🔑 Token completo (primeros 50 chars):', headers['Authorization'].substring(7, 57));
+      } else {
+        console.warn('⚠️ NO HAY TOKEN EN LOS HEADERS!');
+      }
+      
       // Método directo: FormData simple
       console.log('🚀 Creando FormData directo...');
       const formData = new FormData();
@@ -110,13 +163,12 @@ export const uploadPartitura = async (fileData) => {
       
       // Usar fetch simple sin timeout para evitar problemas
       console.log('🚀 Enviando request directo...');
+      console.log('📋 Headers completos:', JSON.stringify(headers, null, 2));
+      
       const response = await fetch(uploadURL, {
         method: 'POST',
         body: formData,
-        headers: {
-          // No agregar Content-Type para FormData, fetch lo maneja automáticamente
-          'Accept': 'application/json',
-        },
+        headers: headers,
       });
       
       console.log('📊 Respuesta del upload:', {
@@ -304,7 +356,7 @@ export const getPianoAudio = async (partituraId, compas) => {
 // Usando AWS Cognito para autenticación
 
 // Importar funciones de Auth de forma lazy
-let signIn, signUp, signOut, currentAuthenticatedUser, currentSession;
+let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession;
 
 const getAuthFunctions = async () => {
   if (!signIn) {
@@ -312,10 +364,10 @@ const getAuthFunctions = async () => {
     signIn = authModule.signIn;
     signUp = authModule.signUp;
     signOut = authModule.signOut;
-    currentAuthenticatedUser = authModule.currentAuthenticatedUser;
-    currentSession = authModule.currentSession;
+    getCurrentUserFn = authModule.getCurrentUser;
+    fetchAuthSession = authModule.fetchAuthSession;
   }
-  return { signIn, signUp, signOut, currentAuthenticatedUser, currentSession };
+  return { signIn, signUp, signOut, getCurrentUser: getCurrentUserFn, fetchAuthSession };
 };
 
 /**
@@ -328,7 +380,39 @@ export const login = async (email, password) => {
   try {
     console.log('🔐 Iniciando sesión con Cognito...');
     
-    const { signIn, currentAuthenticatedUser } = await getAuthFunctions();
+    const { signIn, signOut, getCurrentUser } = await getAuthFunctions();
+    
+    // Siempre cerrar cualquier sesión previa antes de hacer login
+    try {
+      const existingUser = await getCurrentUser();
+      if (existingUser) {
+        console.log('⚠️ Detectada sesión previa, cerrando sesión completamente...');
+        await signOut();
+        // Limpiar también AsyncStorage
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await Promise.all([
+          AsyncStorage.removeItem('@pianodot:id_token'),
+          AsyncStorage.removeItem('@pianodot:refresh_token'),
+          AsyncStorage.removeItem('@pianodot:user'),
+        ]);
+        console.log('✅ Sesión anterior cerrada completamente');
+        // Esperar un momento para que Cognito procese el cierre
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (e) {
+      // No hay usuario autenticado, pero limpiar AsyncStorage por si acaso
+      console.log('ℹ️ No hay sesión de Cognito, limpiando AsyncStorage...');
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await Promise.all([
+          AsyncStorage.removeItem('@pianodot:id_token'),
+          AsyncStorage.removeItem('@pianodot:refresh_token'),
+          AsyncStorage.removeItem('@pianodot:user'),
+        ]);
+      } catch (clearError) {
+        console.log('⚠️ Error limpiando AsyncStorage:', clearError);
+      }
+    }
     
     // Autenticar con Cognito usando el método estándar de Amplify
     const { isSignedIn } = await signIn({ username: email, password });
@@ -338,7 +422,7 @@ export const login = async (email, password) => {
     }
     
     // Obtener el usuario autenticado
-    const cognitoUser = await currentAuthenticatedUser();
+    const cognitoUser = await getCurrentUser();
     
     console.log('✅ Login exitoso con Cognito');
     return cognitoUser;
@@ -353,6 +437,30 @@ export const login = async (email, password) => {
       errorMessage = 'Usuario no confirmado. Verifica tu email.';
     } else if (error.code === 'UserNotFoundException') {
       errorMessage = 'Usuario no encontrado';
+    } else if (error.code === 'UserAlreadyAuthenticatedException') {
+      // Si aún está autenticado después de intentar cerrar, forzar cierre y reintentar
+      console.log('⚠️ Usuario aún autenticado después de cerrar, forzando limpieza...');
+      try {
+        await signOut();
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await Promise.all([
+          AsyncStorage.removeItem('@pianodot:id_token'),
+          AsyncStorage.removeItem('@pianodot:refresh_token'),
+          AsyncStorage.removeItem('@pianodot:user'),
+        ]);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Reintentar login después de limpiar
+        console.log('🔄 Reintentando login después de limpiar sesión...');
+        const { isSignedIn } = await signIn({ username: email, password });
+        if (isSignedIn) {
+          const cognitoUser = await getCurrentUser();
+          return cognitoUser;
+        }
+        throw new Error('No se pudo iniciar sesión después de limpiar');
+      } catch (e) {
+        errorMessage = 'Error al limpiar sesión previa. Por favor, cierra sesión manualmente e intenta nuevamente.';
+        console.error('❌ Error en reintento:', e);
+      }
     } else if (error.code === 'InvalidParameterException') {
       errorMessage = error.message || 'Error en la configuración de autenticación';
     } else if (error.message) {
@@ -431,10 +539,32 @@ export const logout = async () => {
   try {
     console.log('🚪 Cerrando sesión de Cognito...');
     const { signOut } = await getAuthFunctions();
+    
+    // Cerrar sesión de Cognito
     await signOut();
+    
+    // Limpiar AsyncStorage también
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    await Promise.all([
+      AsyncStorage.removeItem('@pianodot:id_token'),
+      AsyncStorage.removeItem('@pianodot:refresh_token'),
+      AsyncStorage.removeItem('@pianodot:user'),
+    ]);
+    
     console.log('✅ Sesión cerrada exitosamente');
   } catch (error) {
     console.error('❌ Error en logout:', error);
+    // Intentar limpiar AsyncStorage aunque falle Cognito
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await Promise.all([
+        AsyncStorage.removeItem('@pianodot:id_token'),
+        AsyncStorage.removeItem('@pianodot:refresh_token'),
+        AsyncStorage.removeItem('@pianodot:user'),
+      ]);
+    } catch (e) {
+      console.error('❌ Error limpiando AsyncStorage:', e);
+    }
     throw error;
   }
 };
@@ -445,11 +575,15 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    const { currentAuthenticatedUser } = await getAuthFunctions();
-    const user = await currentAuthenticatedUser();
+    const { getCurrentUser: getCurrentUserFn } = await getAuthFunctions();
+    const user = await getCurrentUserFn();
     return user;
   } catch (error) {
     console.error('❌ Error obteniendo usuario actual:', error);
+    // Si no hay usuario autenticado, retornar null en lugar de lanzar error
+    if (error.name === 'NotAuthorizedException' || error.message?.includes('not authenticated')) {
+      return null;
+    }
     throw error;
   }
 };
@@ -461,8 +595,8 @@ export const getCurrentUser = async () => {
 export const refreshToken = async () => {
   try {
     console.log('🔄 Refrescando token de Cognito...');
-    const { currentSession } = await getAuthFunctions();
-    const session = await currentSession();
+    const { fetchAuthSession } = await getAuthFunctions();
+    const session = await fetchAuthSession();
     const idToken = session.tokens.idToken.toString();
     console.log('✅ Token refrescado');
     return idToken;
