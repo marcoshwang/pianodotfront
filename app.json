@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "17ba89af-d843-4cc6-9b91-1abc037cffcc"
+      }
+    },
+    "android": {
+      "package": "com.jisameh.pianodot"
+    }
+  }
+}

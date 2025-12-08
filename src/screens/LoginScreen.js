@@ -9,17 +9,46 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { login } from '../../services/pianodotApi';
+import { saveAuthData } from '../../utils/mockAuth';
 
 const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
-    triggerVibration();
-    stop();
-    // Por ahora navegamos directamente al home, después se implementará la autenticación
-    navigation.replace('Home'); // replace, no navigate
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    try {
+      triggerVibration();
+      setIsLoading(true);
+      
+      console.log('🔐 Intentando login con Cognito...');
+      // Login con Cognito retorna el usuario de Cognito
+      const cognitoUser = await login(email, password);
+      
+      // Guardar datos de autenticación (incluye IdToken)
+      await saveAuthData(cognitoUser);
+      
+      console.log('✅ Login exitoso, navegando a Home');
+      stop();
+      navigation.replace('Home'); // replace, no navigate
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      Alert.alert(
+        'Error de autenticación',
+        error.message || 'No se pudo iniciar sesión. Verifica tus credenciales.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRegister = () => {
@@ -97,13 +126,18 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
             </View>
 
             <TouchableOpacity 
-              style={styles.loginButton}
+              style={[styles.loginButton, isLoading && { opacity: 0.7 }]}
               onPress={handleLogin}
+              disabled={isLoading}
               accessibilityLabel="Iniciar sesión"
               accessibilityRole="button"
               accessibilityHint="Iniciar sesión con tu cuenta"
             >
-              <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
+              )}
             </TouchableOpacity>
           </View>
 

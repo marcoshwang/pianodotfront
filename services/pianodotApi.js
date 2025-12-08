@@ -1,14 +1,28 @@
 // Servicio API centralizado para PianoDot usando fetch
 import { getBaseURL, getAuthHeaders } from '../config/api.config';
-import { getAuthToken } from '../utils/mockAuth';
+import { getAuthToken, getAuthTokenSync } from '../utils/mockAuth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuración base
 const BASE_URL = getBaseURL();
 const TIMEOUT = 10000;
+const TOKEN_KEY = '@pianodot:auth_token';
 
-// Función helper para crear headers con autenticación
-const createHeaders = (customHeaders = {}) => {
-  const token = getAuthToken();
+// Función helper para crear headers con autenticación (versión async)
+const createHeaders = async (customHeaders = {}) => {
+  let token = null;
+  try {
+    // Intentar obtener token desde AsyncStorage
+    token = await AsyncStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      // Fallback a versión sync
+      token = getAuthTokenSync();
+    }
+  } catch (error) {
+    console.error('Error obteniendo token:', error);
+    token = getAuthTokenSync();
+  }
+  
   const headers = {
     ...getAuthHeaders(),
     ...customHeaders,
@@ -76,8 +90,8 @@ export const uploadPartitura = async (fileData) => {
       console.log('📤 Iniciando upload de partitura...');
       console.log('File data:', fileData);
       
-      // Usar la URL que sabemos que funciona
-      const uploadURL = 'http://10.0.2.2:8000/partituras';
+      // Usar la URL base centralizada
+      const uploadURL = `${BASE_URL}/partituras`;
       console.log('Haciendo POST a:', uploadURL);
       
       // Método directo: FormData simple
@@ -138,11 +152,12 @@ export const uploadPartitura = async (fileData) => {
 export const getPartituras = async () => {
   try {
     console.log('Haciendo request a:', `${BASE_URL}/partituras`);
-    console.log('Headers:', createHeaders());
+    const headers = await createHeaders();
+    console.log('Headers:', headers);
     
     const response = await fetchWithTimeout(`${BASE_URL}/partituras`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     console.log('Response status:', response.status);
@@ -167,9 +182,10 @@ export const getPartituras = async () => {
  */
 export const getPartituraDetails = async (partituraId) => {
   try {
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     await handleResponse(response);
@@ -187,9 +203,10 @@ export const getPartituraDetails = async (partituraId) => {
  */
 export const getPartituraPredicciones = async (partituraId) => {
   try {
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}/predicciones`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     await handleResponse(response);
@@ -209,11 +226,12 @@ export const deletePartitura = async (partituraId) => {
   try {
     console.log('🗑️ Iniciando eliminación de partitura:', partituraId);
     console.log('🗑️ URL de eliminación:', `${BASE_URL}/partituras/${partituraId}`);
-    console.log('🗑️ Headers:', createHeaders());
+    const headers = await createHeaders();
+    console.log('🗑️ Headers:', headers);
     
     const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}`, {
       method: 'DELETE',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     console.log('🗑️ Respuesta del DELETE:', {
@@ -242,15 +260,214 @@ export const deletePartitura = async (partituraId) => {
  */
 export const getTTSAudio = async (partituraId, compas) => {
   try {
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}/tts/${compas}`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     await handleResponse(response);
     return await response.blob();
   } catch (error) {
     console.error('Error obteniendo audio TTS:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener audio de piano para un compás específico
+ * @param {string} partituraId - ID de la partitura
+ * @param {number} compas - Número del compás
+ * @returns {Promise<Blob>} - Audio en formato blob
+ */
+export const getPianoAudio = async (partituraId, compas) => {
+  try {
+    const baseHeaders = await createHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}/audio_piano/${compas}`, {
+      method: 'GET',
+      headers: {
+        ...baseHeaders,
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'audio/mpeg',
+      },
+    });
+    
+    await handleResponse(response);
+    return await response.blob();
+  } catch (error) {
+    console.error('Error obteniendo audio piano:', error);
+    throw error;
+  }
+};
+
+// ===== ENDPOINTS DE AUTENTICACIÓN =====
+// Usando AWS Cognito para autenticación
+
+// Importar funciones de Auth de forma lazy
+let signIn, signUp, signOut, currentAuthenticatedUser, currentSession;
+
+const getAuthFunctions = async () => {
+  if (!signIn) {
+    const authModule = await import('aws-amplify/auth');
+    signIn = authModule.signIn;
+    signUp = authModule.signUp;
+    signOut = authModule.signOut;
+    currentAuthenticatedUser = authModule.currentAuthenticatedUser;
+    currentSession = authModule.currentSession;
+  }
+  return { signIn, signUp, signOut, currentAuthenticatedUser, currentSession };
+};
+
+/**
+ * Iniciar sesión de usuario con AWS Cognito
+ * @param {string} email - Email del usuario
+ * @param {string} password - Contraseña del usuario
+ * @returns {Promise<Object>} - Usuario de Cognito con tokens
+ */
+export const login = async (email, password) => {
+  try {
+    console.log('🔐 Iniciando sesión con Cognito...');
+    
+    const { signIn, currentAuthenticatedUser } = await getAuthFunctions();
+    
+    // Autenticar con Cognito usando el método estándar de Amplify
+    const { isSignedIn } = await signIn({ username: email, password });
+    
+    if (!isSignedIn) {
+      throw new Error('No se pudo iniciar sesión');
+    }
+    
+    // Obtener el usuario autenticado
+    const cognitoUser = await currentAuthenticatedUser();
+    
+    console.log('✅ Login exitoso con Cognito');
+    return cognitoUser;
+  } catch (error) {
+    console.error('❌ Error en login:', error);
+    
+    // Mejorar mensajes de error
+    let errorMessage = 'Error al iniciar sesión';
+    if (error.code === 'NotAuthorizedException') {
+      errorMessage = 'Credenciales incorrectas';
+    } else if (error.code === 'UserNotConfirmedException') {
+      errorMessage = 'Usuario no confirmado. Verifica tu email.';
+    } else if (error.code === 'UserNotFoundException') {
+      errorMessage = 'Usuario no encontrado';
+    } else if (error.code === 'InvalidParameterException') {
+      errorMessage = error.message || 'Error en la configuración de autenticación';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    const customError = new Error(errorMessage);
+    customError.code = error.code;
+    throw customError;
+  }
+};
+
+/**
+ * Registrar nuevo usuario con AWS Cognito
+ * @param {string} email - Email del usuario
+ * @param {string} password - Contraseña del usuario
+ * @param {string} name - Nombre del usuario (opcional)
+ * @returns {Promise<Object>} - Resultado del registro
+ */
+export const register = async (email, password, name = null) => {
+  try {
+    console.log('📝 Registrando usuario con Cognito...');
+    
+    const { signUp } = await getAuthFunctions();
+    
+    // Atributos del usuario
+    const attributes = {
+      email,
+    };
+    
+    if (name) {
+      attributes.name = name;
+    }
+    
+    // Registrar usuario en Cognito
+    const { userId } = await signUp({
+      username: email,
+      password,
+      options: {
+        userAttributes: attributes,
+      },
+    });
+    
+    console.log('✅ Registro exitoso con Cognito');
+    return {
+      success: true,
+      userId,
+      message: 'Usuario registrado. Verifica tu email para confirmar la cuenta.',
+    };
+  } catch (error) {
+    console.error('❌ Error en registro:', error);
+    
+    // Mejorar mensajes de error
+    let errorMessage = 'Error al registrar usuario';
+    if (error.code === 'UsernameExistsException') {
+      errorMessage = 'Este email ya está registrado';
+    } else if (error.code === 'InvalidPasswordException') {
+      errorMessage = 'La contraseña no cumple los requisitos';
+    } else if (error.code === 'InvalidParameterException') {
+      errorMessage = 'Email inválido';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    const customError = new Error(errorMessage);
+    customError.code = error.code;
+    throw customError;
+  }
+};
+
+/**
+ * Cerrar sesión con AWS Cognito
+ * @returns {Promise<void>}
+ */
+export const logout = async () => {
+  try {
+    console.log('🚪 Cerrando sesión de Cognito...');
+    const { signOut } = await getAuthFunctions();
+    await signOut();
+    console.log('✅ Sesión cerrada exitosamente');
+  } catch (error) {
+    console.error('❌ Error en logout:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener información del usuario actual de Cognito
+ * @returns {Promise<Object>} - Datos del usuario
+ */
+export const getCurrentUser = async () => {
+  try {
+    const { currentAuthenticatedUser } = await getAuthFunctions();
+    const user = await currentAuthenticatedUser();
+    return user;
+  } catch (error) {
+    console.error('❌ Error obteniendo usuario actual:', error);
+    throw error;
+  }
+};
+
+/**
+ * Refrescar token de autenticación con Cognito
+ * @returns {Promise<string>} - Nuevo IdToken
+ */
+export const refreshToken = async () => {
+  try {
+    console.log('🔄 Refrescando token de Cognito...');
+    const { currentSession } = await getAuthFunctions();
+    const session = await currentSession();
+    const idToken = session.tokens.idToken.toString();
+    console.log('✅ Token refrescado');
+    return idToken;
+  } catch (error) {
+    console.error('❌ Error refrescando token:', error);
     throw error;
   }
 };
@@ -264,9 +481,10 @@ export const getTTSAudio = async (partituraId, compas) => {
  */
 export const startPractice = async (partituraId) => {
   try {
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/practice/${partituraId}/start`, {
       method: 'POST',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     await handleResponse(response);
@@ -288,9 +506,10 @@ export const getNextCompas = async (partituraId) => {
     const url = `${BASE_URL}/practice/${partituraId}/next`;
     console.log('🔗 URL:', url);
     
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(url, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     console.log('📡 Respuesta del servidor:', response.status);
@@ -310,9 +529,10 @@ export const getNextCompas = async (partituraId) => {
  */
 export const getPrevCompas = async (partituraId) => {
   try {
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/practice/${partituraId}/prev`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     await handleResponse(response);
@@ -334,9 +554,10 @@ export const repeatCompas = async (partituraId) => {
     const url = `${BASE_URL}/practice/${partituraId}/repeat`;
     console.log(`🔗 URL: ${url}`);
     
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(url, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     console.log(`📡 Respuesta del servidor: ${response.status}`);
@@ -359,9 +580,10 @@ export const repeatCompas = async (partituraId) => {
 export const getCompasesResumen = async (partituraId) => {
   try {
     console.log('📊 Obteniendo resumen de compases para:', partituraId);
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/partituras/${partituraId}/compases/resumen`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     await handleResponse(response);
@@ -383,9 +605,10 @@ export const getCompasesResumen = async (partituraId) => {
 export const checkBackendHealth = async () => {
   try {
     console.log('Verificando conectividad con:', BASE_URL);
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/health`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     console.log('Health check response:', response.status);
@@ -414,9 +637,10 @@ export const testConnectivity = async () => {
     console.log('🧪 Iniciando test de conectividad...');
     console.log('📍 URL:', BASE_URL);
     
+    const headers = await createHeaders();
     const response = await fetchWithTimeout(`${BASE_URL}/`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
     
     result.success = response.ok;
@@ -460,10 +684,11 @@ export const testMultipleURLs = async () => {
       // Usar fetch normal con timeout manual
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos
+      const headers = await createHeaders();
       
       const response = await fetch(`${url}/`, {
         method: 'GET',
-        headers: createHeaders(),
+        headers: headers,
         signal: controller.signal,
       });
       
@@ -525,11 +750,12 @@ export const testUploadEndpoint = async () => {
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const headers = await createHeaders();
     
     const response = await fetch(uploadURL, {
       method: 'POST',
       body: testFormData,
-      headers: createHeaders(),
+      headers: headers,
       signal: controller.signal,
     });
     
@@ -789,10 +1015,11 @@ export const testPartiturasEndpoint = async () => {
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos
+      const headers = await createHeaders();
       
       const response = await fetch(`${url}/partituras`, {
         method: 'GET',
-        headers: createHeaders(),
+        headers: headers,
         signal: controller.signal,
       });
       
@@ -845,6 +1072,13 @@ export const setBaseURL = (url) => {
 };
 
 export default {
+  // Autenticación
+  login,
+  register,
+  logout,
+  getCurrentUser,
+  refreshToken,
+  
   // Partituras
   uploadPartitura,
   getPartituras,
@@ -852,6 +1086,7 @@ export default {
   getPartituraPredicciones,
   deletePartitura,
   getTTSAudio,
+  getPianoAudio,
   
   // Práctica
   startPractice,

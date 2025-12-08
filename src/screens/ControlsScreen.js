@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePractice } from '../context/PracticeContext';
 import { startPractice } from '../../services/pianodotApi';
+import { getBaseURL } from '../../config/api.config';
 
 const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
   const score = route.params?.score;
@@ -105,9 +106,10 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const practiceResponse = await startPractice(score.id);
       console.log('✅ Archivos generados:', practiceResponse);
       
-      // URLs de los audios
-      const ttsUrl = `http://10.0.2.2:8000/partituras/${score.id}/audio_tts/${compasActual}`;
-      const pianoUrl = `http://10.0.2.2:8000/partituras/${score.id}/audio_piano/${compasActual}`;
+      // URLs de los audios usando BASE_URL centralizado
+      const baseURL = getBaseURL();
+      const ttsUrl = `${baseURL}/partituras/${score.id}/audio_tts/${compasActual}`;
+      const pianoUrl = `${baseURL}/partituras/${score.id}/audio_piano/${compasActual}`;
       
       // Precargar audios
       console.log('🎵 Precargando audios...');
@@ -151,9 +153,10 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const updatedPractice = await repeatCurrentCompas();
       console.log('✅ Compás repetido exitosamente');
       
-      // URLs de los audios
-      const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
-      const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      // URLs de los audios usando BASE_URL centralizado
+      const baseURL = getBaseURL();
+      const pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+      const ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       
       // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
@@ -194,9 +197,10 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const updatedPractice = await nextCompas();
       console.log('✅ Siguiente compás cargado:', updatedPractice);
       
-      // URLs de los audios
-      const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
-      const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      // URLs de los audios usando BASE_URL centralizado
+      const baseURL = getBaseURL();
+      const pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+      const ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       
       // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
@@ -237,9 +241,10 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       const updatedPractice = await prevCompas();
       console.log('✅ Compás anterior cargado:', updatedPractice);
       
-      // URLs de los audios
-      const pianoUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
-      const ttsUrl = `http://10.0.2.2:8000/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
+      // URLs de los audios usando BASE_URL centralizado
+      const baseURL = getBaseURL();
+      const pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
+      const ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       
       // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');

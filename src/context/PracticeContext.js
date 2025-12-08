@@ -7,6 +7,7 @@ import {
   getPrevCompas,
   repeatCompas,
   getTTSAudio,
+  getPianoAudio,
   getCompasesResumen,
   getPartituraPredicciones
 } from '../../services/pianodotApi';
@@ -291,42 +292,14 @@ export const PracticeProvider = ({ children }) => {
       const practiceResponse = await startPractice(id);
       console.log('✅ Archivos generados:', practiceResponse);
 
-      // Obtener audio de instrucciones TTS
-      const ttsUrl = `http://10.0.2.2:8000/partituras/${id}/audio_tts/${compas}`;
-      console.log('🎵 Obteniendo audio TTS desde:', ttsUrl);
-      
-      const ttsResponse = await fetch(ttsUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'audio/mpeg',
-        },
-        timeout: 30000,
-      });
-      
-      if (!ttsResponse.ok) {
-        throw new Error(`Error obteniendo audio TTS: ${ttsResponse.status}`);
-      }
-      const ttsBlob = await ttsResponse.blob();
+      // Obtener audio de instrucciones TTS usando función centralizada
+      console.log('🎵 Obteniendo audio TTS para compás:', compas);
+      const ttsBlob = await getTTSAudio(id, compas);
       console.log('✅ Audio TTS obtenido:', ttsBlob);
 
-      // Obtener audio del piano
-      const pianoUrl = `http://10.0.2.2:8000/partituras/${id}/audio_piano/${compas}`;
-      console.log('🎵 Obteniendo audio piano desde:', pianoUrl);
-      
-      const pianoResponse = await fetch(pianoUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'audio/mpeg',
-        },
-        timeout: 30000,
-      });
-      
-      if (!pianoResponse.ok) {
-        throw new Error(`Error obteniendo audio piano: ${pianoResponse.status}`);
-      }
-      const pianoBlob = await pianoResponse.blob();
+      // Obtener audio del piano usando función centralizada
+      console.log('🎵 Obteniendo audio piano para compás:', compas);
+      const pianoBlob = await getPianoAudio(id, compas);
       console.log('✅ Audio piano obtenido:', pianoBlob);
 
       const audioData = {

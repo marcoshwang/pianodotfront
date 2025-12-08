@@ -8,19 +8,60 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { register } from '../../services/pianodotApi';
 
 const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = () => {
-    triggerVibration();
-    stop();
-    // Por ahora navegamos directamente al home, después se implementará el registro
-    navigation.replace('Home');
+  const handleRegister = async () => {
+    if (!nombre || !email || !password) {
+      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+
+    try {
+      triggerVibration();
+      setIsLoading(true);
+      
+      console.log('📝 Intentando registro con Cognito...');
+      const name = `${nombre} ${apellido}`.trim();
+      const result = await register(email, password, name);
+      
+      console.log('✅ Registro exitoso');
+      Alert.alert(
+        'Registro exitoso',
+        result.message || 'Usuario registrado. Verifica tu email para confirmar la cuenta.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              stop();
+              navigation.navigate('Login');
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error en registro:', error);
+      Alert.alert(
+        'Error de registro',
+        error.message || 'No se pudo registrar el usuario. Intenta nuevamente.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoBack = () => {
@@ -119,13 +160,18 @@ const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }
             </View>
 
             <TouchableOpacity 
-              style={styles.registerButton}
+              style={[styles.registerButton, isLoading && { opacity: 0.7 }]}
               onPress={handleRegister}
+              disabled={isLoading}
               accessibilityLabel="Crear cuenta"
               accessibilityRole="button"
               accessibilityHint="Crear nueva cuenta con los datos ingresados"
             >
-              <Text style={styles.registerButtonText}>ACEPTAR</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.registerButtonText}>ACEPTAR</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
