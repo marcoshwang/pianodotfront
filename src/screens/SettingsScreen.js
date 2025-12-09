@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, updateSetting, fontSizeConfig, contrastConfig }) => {
   const handleBack = () => {
@@ -9,10 +8,10 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
     navigation.goBack();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión? Esto eliminará todas tus partituras, progreso y configuraciones guardadas.',
+      '¿Estás seguro de que quieres cerrar sesión?',
       [
         {
           text: 'Cancelar',
@@ -23,14 +22,37 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.clear();
               triggerVibration();
+              console.log('🚪 Cerrando sesión...');
+              
+              // Cerrar sesión de Cognito
+              try {
+                const { signOut } = await import('aws-amplify/auth');
+                await signOut();
+                console.log('✅ Sesión de Cognito cerrada');
+              } catch (cognitoError) {
+                console.warn('⚠️ Error cerrando sesión de Cognito:', cognitoError.message);
+                // Continuar de todas formas para limpiar datos locales
+              }
+              
+              // Limpiar todos los datos de autenticación (tokens, usuario, etc.)
+              const { clearAllAuthData } = await import('../../utils/mockAuth');
+              await clearAllAuthData();
+              console.log('✅ Tokens y datos de autenticación limpiados');
+              
+              // Navegar a Welcome
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Welcome' }],
               });
+              
+              console.log('✅ Sesión cerrada exitosamente');
             } catch (error) {
-              console.error('Error al cerrar sesión:', error);
+              console.error('❌ Error al cerrar sesión:', error);
+              Alert.alert(
+                'Error',
+                'Hubo un problema al cerrar sesión. Por favor, intenta nuevamente.'
+              );
             }
           },
         },

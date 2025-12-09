@@ -20,6 +20,7 @@ const getAuthFunctions = async () => {
 
 // Claves para AsyncStorage
 const TOKEN_KEY = '@pianodot:id_token';
+const ACCESS_TOKEN_KEY = '@pianodot:access_token';
 const REFRESH_TOKEN_KEY = '@pianodot:refresh_token';
 const USER_KEY = '@pianodot:user';
 
@@ -37,12 +38,30 @@ export const saveAuthData = async (cognitoUser) => {
     const { fetchAuthSession, fetchUserAttributes } = await getAuthFunctions();
     // Obtener los tokens de Cognito
     const session = await fetchAuthSession();
+    
+    // Verificar que la sesión tenga tokens
+    if (!session || !session.tokens || !session.tokens.idToken) {
+      console.error('❌ Error: La sesión no tiene tokens válidos');
+      console.error('Session object:', session);
+      throw new Error('No se pudieron obtener los tokens de la sesión');
+    }
+    
     const idToken = session.tokens.idToken.toString();
+    const accessToken = session.tokens.accessToken?.toString() || null;
     const refreshToken = session.tokens.refreshToken?.toString() || null;
     
-    // Guardar IdToken (este es el que se usa en Authorization header)
+    // Guardar IdToken (este es el que se usa en Authorization header para API Gateway)
     await AsyncStorage.setItem(TOKEN_KEY, idToken);
     console.log('✅ IdToken guardado en AsyncStorage');
+    
+    // Guardar Access Token (útil para otras operaciones)
+    if (accessToken) {
+      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      console.log('✅ Access token guardado en AsyncStorage');
+    } else {
+      await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+      console.log('⚠️ No hay access token disponible');
+    }
     
     // Guardar refresh token solo si existe
     if (refreshToken) {
@@ -53,6 +72,13 @@ export const saveAuthData = async (cognitoUser) => {
       await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
       console.log('⚠️ No hay refresh token disponible');
     }
+    
+    // Log de todos los tokens guardados
+    console.log('📋 Tokens guardados:', {
+      hasIdToken: !!idToken,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+    });
     
     // Obtener atributos del usuario (en Amplify v6 se obtienen por separado)
     let userAttributes = {};
@@ -101,6 +127,22 @@ export const loadAuthData = async () => {
         // Guardar en AsyncStorage para acceso rápido
         await AsyncStorage.setItem(TOKEN_KEY, idToken);
         
+        // Guardar también access token si está disponible
+        const accessToken = session.tokens.accessToken?.toString() || null;
+        if (accessToken) {
+          await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        } else {
+          await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+        }
+        
+        // Guardar refresh token si está disponible
+        const refreshToken = session.tokens.refreshToken?.toString() || null;
+        if (refreshToken) {
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        } else {
+          await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+        }
+        
         // Obtener atributos del usuario
         let userAttributes = {};
         try {
@@ -132,6 +174,7 @@ export const loadAuthData = async () => {
       // porque los tokens guardados ya no son válidos
       await Promise.all([
         AsyncStorage.removeItem(TOKEN_KEY),
+        AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
         AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
         AsyncStorage.removeItem(USER_KEY),
       ]);
@@ -191,6 +234,7 @@ export const mockLogout = async () => {
     // Limpiar AsyncStorage completamente
     await Promise.all([
       AsyncStorage.removeItem(TOKEN_KEY),
+      AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
       AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
       AsyncStorage.removeItem(USER_KEY),
     ]);
@@ -228,6 +272,7 @@ export const clearAllAuthData = async () => {
     // Limpiar AsyncStorage
     await Promise.all([
       AsyncStorage.removeItem(TOKEN_KEY),
+      AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
       AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
       AsyncStorage.removeItem(USER_KEY),
     ]);
@@ -329,6 +374,42 @@ export const getAuthTokenSync = () => {
 };
 
 /**
+ * Obtener access token de autenticación
+ * @returns {Promise<string|null>} - AccessToken o null
+ */
+export const getAccessToken = async () => {
+  try {
+    // Primero intentar obtener desde Cognito session
+    try {
+      const { fetchAuthSession } = await getAuthFunctions();
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens.accessToken?.toString();
+      
+      if (accessToken) {
+        console.log('✅ AccessToken obtenido de Cognito session');
+        await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        return accessToken;
+      }
+    } catch (cognitoError) {
+      console.log('⚠️ No hay sesión activa de Cognito para access token');
+    }
+    
+    // Fallback a AsyncStorage
+    const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+    if (token) {
+      console.log('✅ AccessToken obtenido de AsyncStorage');
+      return token;
+    }
+    
+    console.warn('⚠️ No se encontró access token');
+    return null;
+  } catch (error) {
+    console.error('❌ Error obteniendo access token:', error);
+    return null;
+  }
+};
+
+/**
  * Obtener ID del usuario
  * @returns {string|null} - ID del usuario o null
  */
@@ -378,6 +459,7 @@ export default {
   isUserAuthenticated,
   getAuthToken,
   getAuthTokenSync,
+  getAccessToken,
   getUserId,
   verifyToken,
   refreshToken,

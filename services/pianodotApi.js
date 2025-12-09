@@ -1,6 +1,6 @@
 // Servicio API centralizado para PianoDot usando fetch
 import { getBaseURL, getAuthHeaders } from '../config/api.config';
-import { getAuthToken, getAuthTokenSync } from '../utils/mockAuth';
+import { getAuthToken, getAuthTokenSync, getAccessToken } from '../utils/mockAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuración base
@@ -13,15 +13,28 @@ const TOKEN_KEY = '@pianodot:id_token';
 const createHeaders = async (customHeaders = {}, options = {}) => {
   let token = null;
   try {
-    // Primero intentar obtener token usando la función de mockAuth (más confiable)
-    token = await getAuthToken();
+    // IMPORTANTE: Para OAuth (Google login), el backend requiere access_token
+    // porque valida el at_hash claim. Intentar primero con access_token.
+    // Si no está disponible, usar idToken como fallback.
+    
+    // Primero intentar obtener access_token (necesario para validación de at_hash)
+    token = await getAccessToken();
+    
     if (!token) {
-      // Fallback: intentar obtener directamente desde AsyncStorage
-      token = await AsyncStorage.getItem(TOKEN_KEY);
+      // Si no hay access_token, usar idToken como fallback
+      console.log('ℹ️ No hay access_token disponible, usando idToken...');
+      token = await getAuthToken();
+      
       if (!token) {
-        // Último fallback a versión sync
-        token = getAuthTokenSync();
+        // Fallback: intentar obtener directamente desde AsyncStorage
+        token = await AsyncStorage.getItem(TOKEN_KEY);
+        if (!token) {
+          // Último fallback a versión sync
+          token = getAuthTokenSync();
+        }
       }
+    } else {
+      console.log('✅ Usando access_token para autenticación (requerido para at_hash validation)');
     }
     
     // Log del token obtenido para debugging
@@ -31,7 +44,7 @@ const createHeaders = async (customHeaders = {}, options = {}) => {
       console.log('🔑 Token length:', token.length);
       // Verificar que sea un JWT válido (debe empezar con "eyJ")
       if (token.startsWith('eyJ')) {
-        console.log('✅ Token parece ser un JWT válido (IdToken)');
+        console.log('✅ Token parece ser un JWT válido');
       } else {
         console.warn('⚠️ Token no parece ser un JWT válido');
       }
@@ -356,7 +369,7 @@ export const getPianoAudio = async (partituraId, compas) => {
 // Usando AWS Cognito para autenticación
 
 // Importar funciones de Auth de forma lazy
-let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession;
+let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession, signInWithRedirect;
 
 const getAuthFunctions = async () => {
   if (!signIn) {
@@ -366,8 +379,9 @@ const getAuthFunctions = async () => {
     signOut = authModule.signOut;
     getCurrentUserFn = authModule.getCurrentUser;
     fetchAuthSession = authModule.fetchAuthSession;
+    signInWithRedirect = authModule.signInWithRedirect;
   }
-  return { signIn, signUp, signOut, getCurrentUser: getCurrentUserFn, fetchAuthSession };
+  return { signIn, signUp, signOut, getCurrentUser: getCurrentUserFn, fetchAuthSession, signInWithRedirect };
 };
 
 /**
@@ -463,6 +477,93 @@ export const login = async (email, password) => {
       }
     } else if (error.code === 'InvalidParameterException') {
       errorMessage = error.message || 'Error en la configuración de autenticación';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    const customError = new Error(errorMessage);
+    customError.code = error.code;
+    throw customError;
+  }
+};
+
+/**
+ * Iniciar sesión con Google usando Cognito Federated Identity
+ * @returns {Promise<void>}
+ */
+export const loginWithGoogle = async () => {
+  try {
+    console.log('🔐 Iniciando sesión con Google...');
+    
+    const { signInWithRedirect, signOut, getCurrentUser } = await getAuthFunctions();
+    
+    // Cerrar cualquier sesión previa antes de iniciar con Google
+    try {
+      const existingUser = await getCurrentUser();
+      if (existingUser) {
+        console.log('⚠️ Detectada sesión previa, cerrando sesión antes de iniciar con Google...');
+        
+        // Limpiar AsyncStorage primero
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await Promise.all([
+          AsyncStorage.removeItem('@pianodot:id_token'),
+          AsyncStorage.removeItem('@pianodot:access_token'),
+          AsyncStorage.removeItem('@pianodot:refresh_token'),
+          AsyncStorage.removeItem('@pianodot:user'),
+        ]);
+        
+        // Cerrar sesión de Cognito
+        try {
+          await signOut();
+          console.log('✅ Sesión de Cognito cerrada');
+        } catch (signOutError) {
+          console.warn('⚠️ Error cerrando sesión de Cognito:', signOutError.message);
+          // Continuar de todas formas
+        }
+        
+        // Esperar un momento para que Cognito procese el cierre
+        console.log('⏳ Esperando que se procese el cierre de sesión...');
+        await new Promise(resolve => setTimeout(resolve, 500)); // Reducido a 500ms
+      }
+    } catch (e) {
+      // No hay usuario autenticado, continuar
+      console.log('ℹ️ No hay sesión previa, continuando con Google...');
+    }
+    
+    // Iniciar el flujo de autenticación con Google
+    console.log('🚀 Iniciando redirect a Google...');
+    await signInWithRedirect({
+      provider: 'Google',
+    });
+    
+    console.log('✅ Redirección a Google iniciada');
+  } catch (error) {
+    console.error('❌ Error iniciando sesión con Google:', error);
+    
+    let errorMessage = 'Error al iniciar sesión con Google';
+    if (error.code === 'UserAlreadyAuthenticatedException') {
+      // Si aún está autenticado después de intentar cerrar, forzar cierre y reintentar
+      console.log('⚠️ Usuario aún autenticado, forzando cierre...');
+      try {
+        const { signOut } = await getAuthFunctions();
+        await signOut();
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await Promise.all([
+          AsyncStorage.removeItem('@pianodot:id_token'),
+          AsyncStorage.removeItem('@pianodot:refresh_token'),
+          AsyncStorage.removeItem('@pianodot:user'),
+        ]);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Reintentar después de limpiar
+        console.log('🔄 Reintentando login con Google después de limpiar...');
+        const { signInWithRedirect } = await getAuthFunctions();
+        await signInWithRedirect({
+          provider: 'Google',
+        });
+        return; // Salir exitosamente
+      } catch (retryError) {
+        errorMessage = 'No se pudo cerrar la sesión previa. Por favor, cierra sesión manualmente e intenta nuevamente.';
+      }
     } else if (error.message) {
       errorMessage = error.message;
     }
@@ -1205,9 +1306,63 @@ export const setBaseURL = (url) => {
   BASE_URL = url;
 };
 
+// ===== ENDPOINTS DE CONFIGURACIÓN DE USUARIO =====
+
+/**
+ * Obtener configuración del usuario actual
+ * @returns {Promise<Object>} - Configuración del usuario
+ */
+export const getUserConfig = async () => {
+  try {
+    const headers = await createHeaders();
+    const response = await fetchWithTimeout(`${BASE_URL}/users/me/config`, {
+      method: 'GET',
+      headers: headers,
+    });
+    
+    await handleResponse(response);
+    const config = await response.json();
+    console.log('✅ Configuración del usuario obtenida:', config);
+    return config;
+  } catch (error) {
+    console.error('❌ Error obteniendo configuración del usuario:', error);
+    throw error;
+  }
+};
+
+/**
+ * Guardar configuración del usuario actual
+ * @param {Object} config - Configuración a guardar
+ * @param {string} config.font_size - Tamaño de fuente: 'normal', 'grande', 'extraGrande'
+ * @param {string} config.tema_preferido - Tema preferido: 'whiteBlack', 'blackYellow', 'blackBlue', 'blackGreen', 'blackWhite'
+ * @param {boolean} config.vibracion - Vibración activada: true, false
+ * @returns {Promise<Object>} - Configuración guardada
+ */
+export const saveUserConfig = async (config) => {
+  try {
+    const headers = await createHeaders();
+    
+    // El endpoint espera PATCH según la documentación
+    const response = await fetchWithTimeout(`${BASE_URL}/users/me/config`, {
+      method: 'PATCH',
+      headers: headers,
+      body: JSON.stringify(config),
+    });
+    
+    await handleResponse(response);
+    const savedConfig = await response.json();
+    console.log('✅ Configuración del usuario guardada:', savedConfig);
+    return savedConfig;
+  } catch (error) {
+    console.error('❌ Error guardando configuración del usuario:', error);
+    throw error;
+  }
+};
+
 export default {
   // Autenticación
   login,
+  loginWithGoogle,
   register,
   logout,
   getCurrentUser,
@@ -1227,6 +1382,10 @@ export default {
   getNextCompas,
   getPrevCompas,
   repeatCompas,
+  
+  // Configuración de usuario
+  getUserConfig,
+  saveUserConfig,
   
   // Utilidades
   checkBackendHealth,
