@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -315,9 +316,9 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
 
   const getReproducirText = () => {
     if (settings?.fontSize === 'large' || settings?.fontSize === 'extraLarge') {
-      return 'REPRODU' + '\n' + 'CIR COMPÁS';
+      return 'COMENZAR' + '\n' + 'PRÁCTICA';
     }
-    return 'REPRODUCIR' + '\n' + 'COMPÁS';
+    return 'COMENZAR' + '\n' + 'PRÁCTICA';
   };
 
   const getControlPadding = () => {
@@ -340,7 +341,15 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
         </TouchableOpacity>
       </View>
 
-      <View style={styles.controlsContainer}>
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          justifyContent: 'center',
+          paddingTop: sizeConfig.buttonPadding,
+          paddingBottom: sizeConfig.buttonPadding * 1.5,
+        }}
+        showsVerticalScrollIndicator={true}
+      >
         <View style={styles.controlsButtonsContainer}>
           {/* Botón 1: Reproducir compás */}
           <TouchableOpacity
@@ -348,12 +357,12 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               styles.controlButton,
               {
                 paddingVertical: getControlPadding(),
-                opacity: (practiceLoading || isLoadingAudio) ? 0.7 : 1,
+                opacity: (practiceLoading || isLoadingAudio || hasActivePractice) ? 0.7 : 1,
               }
             ]}
             onPress={handlePlayCompas}
-            disabled={practiceLoading || isLoadingAudio}
-            accessibilityLabel="Reproducir compás"
+            disabled={practiceLoading || isLoadingAudio || hasActivePractice}
+            accessibilityLabel="Comenzar práctica"
             accessibilityRole="button"
           >
             {isLoadingAudio ? (
@@ -426,7 +435,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
