@@ -65,9 +65,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
       setSavedProgress(localProgress);
       
       // Obtener predicciones para calcular total de compases
-      console.log('🔍 Obteniendo predicciones...');
       const predicciones = await getPartituraPredicciones(score.id);
-      console.log('📊 Predicciones respuesta:', predicciones);
       
       let totalCompases = 0;
       

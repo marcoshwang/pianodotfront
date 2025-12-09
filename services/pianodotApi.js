@@ -831,6 +831,44 @@ export const getCompasesResumen = async (partituraId) => {
   }
 };
 
+/**
+ * Obtener timeline de práctica para un compás específico
+ * @param {string} partituraId - ID de la partitura
+ * @param {number} compas - Número del compás
+ * @returns {Promise<Object>} - Timeline con eventos del compás
+ */
+export const getTimeline = async (partituraId, compas) => {
+  try {
+    console.log('📅 Obteniendo timeline para partitura:', partituraId, 'compás:', compas);
+    const url = `${BASE_URL}/partituras/${partituraId}/practice/${compas}/timeline`;
+    console.log('🌐 URL del endpoint:', url);
+    
+    const headers = await createHeaders();
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: headers,
+    });
+    
+    console.log('📊 Respuesta del servidor (GET timeline):', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+    
+    await handleResponse(response);
+    const data = await response.json();
+    
+    console.log('✅ RESPUESTA COMPLETA DEL ENDPOINT GET /partituras/{partitura_id}/practice/{compas}/timeline:');
+    console.log(JSON.stringify(data, null, 2));
+    console.log('📊 Número de eventos en timeline:', data?.timeline?.length || 0);
+    
+    return data;
+  } catch (error) {
+    console.error('❌ Error obteniendo timeline:', error);
+    throw error;
+  }
+};
+
 // ===== UTILIDADES =====
 
 /**
