@@ -40,19 +40,11 @@ const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }
       const result = await register(email, password, name);
       
       console.log('✅ Registro exitoso');
-      Alert.alert(
-        'Registro exitoso',
-        result.message || 'Usuario registrado. Verifica tu email para confirmar la cuenta.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              stop();
-              navigation.navigate('Login');
-            },
-          },
-        ]
-      );
+      console.log('📧 Mensaje:', result.message || 'Usuario registrado. Verifica tu email para confirmar la cuenta.');
+      
+      // Navegar directamente a Login sin popup
+      stop();
+      navigation.replace('Login');
     } catch (error) {
       console.error('❌ Error en registro:', error);
       Alert.alert(
