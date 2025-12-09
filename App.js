@@ -14,7 +14,7 @@ try {
   console.warn('⚠️ @aws-amplify/rtn-web-browser no está vinculado. Necesitas hacer un nuevo build para OAuth.');
 }
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, Linking, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Fredoka_400Regular, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold } from '@expo-google-fonts/fredoka';
@@ -233,6 +233,44 @@ const processOAuthCallback = async (url) => {
     
     console.log('✅ Datos de autenticación guardados');
     
+    // Recargar configuraciones desde el backend
+    try {
+      const { getUserConfig } = await import('./services/pianodotApi');
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      
+      const backendConfig = await getUserConfig();
+      if (backendConfig) {
+        // Mapear valores del backend al frontend
+        const fontSizeMap = {
+          'normal': 'normal',
+          'grande': 'large',
+          'extraGrande': 'extraLarge'
+        };
+        
+        const frontendSettings = {
+          fontSize: fontSizeMap[backendConfig.font_size] || 'normal',
+          contrast: backendConfig.tema_preferido || 'whiteBlack',
+          vibration: backendConfig.vibracion !== undefined ? backendConfig.vibracion : true
+        };
+        
+        // Guardar en AsyncStorage para que useSettings las detecte
+        await AsyncStorage.setItem('pianoSettings', JSON.stringify(frontendSettings));
+        console.log('✅ Configuraciones del usuario cargadas desde el backend:', frontendSettings);
+        
+        // ✅ Notificar a useSettings que recargue
+        try {
+          const { settingsEvents } = await import('./src/utils/settingsEvents');
+          settingsEvents.emit();
+          console.log('📢 Evento de recarga de settings emitido');
+        } catch (emitError) {
+          console.warn('⚠️ No se pudo emitir evento de recarga:', emitError);
+        }
+      }
+    } catch (configError) {
+      console.log('⚠️ No se pudieron cargar configuraciones del backend:', configError.message);
+      // No es crítico, el hook las cargará después
+    }
+    
     // Navegar a Home
     const navSuccess = await navigateToHome();
     
@@ -378,19 +416,27 @@ function PianoDotApp() {
     getCurrentContrastConfig,
     updateSetting,
     fontSizeConfig,
-    contrastConfig
+    contrastConfig,
+    resetSettings,
+    loadSettings
   } = useSettings();
 
-  // Usar el hook de deep links
   useDeepLinkHandler();
 
-  const getStyles = () => {
+  // ✅ SOLUCIÓN: Usar useMemo para recalcular estilos cuando settings cambia
+  const styles = useMemo(() => {
+    console.log('🎨 Regenerando estilos dinámicos...');
+    console.log('   - Contrast:', settings.contrast);
+    console.log('   - FontSize:', settings.fontSize);
+    
     const sizeConfig = getCurrentSizeConfig();
     const contrastConfig = getCurrentContrastConfig();
+    
     return getDynamicStyles(sizeConfig, contrastConfig, settings.contrast);
-  };
-
-  const styles = getStyles();
+  }, [settings.contrast, settings.fontSize]); // ✅ Dependencias críticas
+  
+  // ✅ Log para verificar
+  console.log('🎨 Estilos aplicados - backgroundColor:', styles.container?.backgroundColor);
   
   return (
     <View style={styles.appContainer}>
@@ -400,38 +446,41 @@ function PianoDotApp() {
           initialRouteName="Welcome"
           screenOptions={{ headerShown: false }}
         >
+          {/* ❌ ANTES: getStyles() - genera estilos nuevos cada vez */}
+          {/* ✅ DESPUÉS: styles - usa los estilos memorizados */}
+          
           <Stack.Screen name="Welcome">
-            {(props) => <WelcomeLandingScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} speak={speak} speakIntro={speakIntro} settings={settings} />}
+            {(props) => <WelcomeLandingScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} speak={speak} speakIntro={speakIntro} settings={settings} />}
           </Stack.Screen>
           <Stack.Screen name="Auth">
-            {(props) => <AuthScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+            {(props) => <AuthScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
           </Stack.Screen>
           <Stack.Screen name="Login">
-            {(props) => <LoginScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+            {(props) => <LoginScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} loadSettings={loadSettings} />}
           </Stack.Screen>
           <Stack.Screen name="Register">
-            {(props) => <RegisterScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
+            {(props) => <RegisterScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} />}
           </Stack.Screen>
           <Stack.Screen name="Home">
-            {(props) => <HomeScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} speak={speak} speakIntro={speakIntro} />}
+            {(props) => <HomeScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} speak={speak} speakIntro={speakIntro} />}
           </Stack.Screen>
           <Stack.Screen name="LoadScores">
-            {(props) => <LoadScoresScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} />}
+            {(props) => <LoadScoresScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} />}
           </Stack.Screen>
           <Stack.Screen name="MyScores">
-            {(props) => <MyScoresScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} />}
+            {(props) => <MyScoresScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} />}
           </Stack.Screen>
           <Stack.Screen name="ScoreDetail">
-            {(props) => <ScoreDetailScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} contrastConfig={contrastConfig} />}
+            {(props) => <ScoreDetailScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} contrastConfig={contrastConfig} />}
           </Stack.Screen>
           <Stack.Screen name="Piano">
-            {(props) => <PianoScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} getCurrentSizeConfig={getCurrentSizeConfig} getCurrentContrastConfig={getCurrentContrastConfig} />}
+            {(props) => <PianoScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} getCurrentSizeConfig={getCurrentSizeConfig} getCurrentContrastConfig={getCurrentContrastConfig} />}
           </Stack.Screen>
           <Stack.Screen name="Controls">
-            {(props) => <ControlsScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} getCurrentSizeConfig={getCurrentSizeConfig} getCurrentContrastConfig={getCurrentContrastConfig} />}
+            {(props) => <ControlsScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} getCurrentSizeConfig={getCurrentSizeConfig} getCurrentContrastConfig={getCurrentContrastConfig} />}
           </Stack.Screen>
           <Stack.Screen name="Settings">
-            {(props) => <SettingsScreen {...props} styles={getStyles()} triggerVibration={triggerVibration} stop={stop} settings={settings} updateSetting={updateSetting} fontSizeConfig={fontSizeConfig} contrastConfig={contrastConfig} />}
+            {(props) => <SettingsScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} updateSetting={updateSetting} fontSizeConfig={fontSizeConfig} contrastConfig={contrastConfig} resetSettings={resetSettings} />}
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>

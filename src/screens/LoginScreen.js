@@ -15,7 +15,7 @@ import {
 import { login } from '../../services/pianodotApi';
 import { saveAuthData } from '../../utils/mockAuth';
 
-const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) => {
+const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings, loadSettings }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,15 +31,29 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
       setIsLoading(true);
       
       console.log('🔐 Intentando login con Cognito...');
-      // Login con Cognito retorna el usuario de Cognito
+      
+      // 1. Login con Cognito
       const cognitoUser = await login(email, password);
+      console.log('✅ Login con Cognito exitoso');
       
-      // Guardar datos de autenticación (incluye IdToken)
+      // 2. Guardar datos de autenticación
       await saveAuthData(cognitoUser);
+      console.log('✅ Datos de autenticación guardados');
       
-      console.log('✅ Login exitoso, navegando a Home');
+      // 3. Recargar configuraciones desde el backend
+      if (loadSettings) {
+        console.log('🔄 Recargando configuraciones del usuario...');
+        await loadSettings();
+        console.log('✅ Configuraciones recargadas');
+      }
+      
+      // 4. Navegar a Home
+      console.log('✅ Navegando a Home');
       stop();
-      navigation.replace('Home'); // replace, no navigate
+      
+      // Usar replace para evitar que el usuario vuelva al login con el botón back
+      navigation.replace('Home');
+      
     } catch (error) {
       console.error('❌ Error en login:', error);
       Alert.alert(
@@ -81,6 +95,7 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleGoBack}
+              disabled={isLoading}
               accessibilityLabel="Volver atrás"
               accessibilityRole="button"
               accessibilityHint="Regresar a la pantalla de autenticación"
@@ -88,7 +103,6 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
               <Text style={styles.backButtonText}>VOLVER</Text>
             </TouchableOpacity>
           </View>
-
 
           {/* Contenido principal */}
           <View style={styles.loginContent}>
@@ -103,11 +117,12 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
                 placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
                 value={email}
                 onChangeText={setEmail}
-                keyboardType="default"
+                keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="next"
                 blurOnSubmit={false}
+                editable={!isLoading}
                 accessibilityLabel="Campo de correo electrónico"
                 accessibilityHint="Ingresa tu correo electrónico"
               />
@@ -120,6 +135,8 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
                 onChangeText={setPassword}
                 secureTextEntry={true}
                 returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                editable={!isLoading}
                 accessibilityLabel="Campo de contraseña"
                 accessibilityHint="Ingresa tu contraseña"
               />
@@ -150,6 +167,7 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings }) =
             <TouchableOpacity 
               style={styles.registerButton}
               onPress={handleRegister}
+              disabled={isLoading}
               accessibilityLabel="Registrarse"
               accessibilityRole="button"
               accessibilityHint="Crear una nueva cuenta"

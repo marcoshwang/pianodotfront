@@ -1314,18 +1314,28 @@ export const setBaseURL = (url) => {
  */
 export const getUserConfig = async () => {
   try {
+    console.log('📥 Haciendo GET a /users/me/config...');
     const headers = await createHeaders();
-    const response = await fetchWithTimeout(`${BASE_URL}/users/me/config`, {
+    const url = `${BASE_URL}/users/me/config`;
+    console.log('🌐 URL del endpoint:', url);
+    
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: headers,
     });
     
+    console.log('📊 Respuesta del servidor (GET /users/me/config):', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+    
     await handleResponse(response);
     const config = await response.json();
-    console.log('✅ Configuración del usuario obtenida:', config);
+    console.log('✅ Configuración del usuario obtenida (GET /users/me/config):', config);
     return config;
   } catch (error) {
-    console.error('❌ Error obteniendo configuración del usuario:', error);
+    console.error('❌ Error obteniendo configuración del usuario (GET /users/me/config):', error);
     throw error;
   }
 };
@@ -1340,21 +1350,39 @@ export const getUserConfig = async () => {
  */
 export const saveUserConfig = async (config) => {
   try {
+    console.log('💾 Iniciando guardado de configuración en backend...');
+    console.log('📋 Configuración a guardar:', JSON.stringify(config, null, 2));
+    
     const headers = await createHeaders();
+    console.log('📋 Headers preparados:', {
+      'Content-Type': headers['Content-Type'],
+      'Authorization': headers['Authorization'] ? 'Bearer ***' : 'NO HAY TOKEN'
+    });
+    
+    const url = `${BASE_URL}/users/me/config`;
+    console.log('🌐 URL del endpoint:', url);
     
     // El endpoint espera PATCH según la documentación
-    const response = await fetchWithTimeout(`${BASE_URL}/users/me/config`, {
+    const response = await fetchWithTimeout(url, {
       method: 'PATCH',
       headers: headers,
       body: JSON.stringify(config),
     });
     
+    console.log('📊 Respuesta del servidor:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+    
     await handleResponse(response);
     const savedConfig = await response.json();
-    console.log('✅ Configuración del usuario guardada:', savedConfig);
+    console.log('✅ Configuración del usuario guardada exitosamente:', savedConfig);
     return savedConfig;
   } catch (error) {
     console.error('❌ Error guardando configuración del usuario:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 };
