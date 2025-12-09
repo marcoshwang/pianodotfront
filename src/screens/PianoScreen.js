@@ -46,18 +46,41 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     stopAudioRef.current = stopAudio;
   }, [stopAudio]);
 
-  // ✅ Mapeo de notas a imágenes de teclas
-  const getKeyImageForNote = useCallback((note) => {
+  // ✅ Mapeo de notas a imágenes según MANO (MD/MI)
+  const getKeyImageForNote = useCallback((note, mano) => {
     const noteMap = {
-      'C': require('../../img/tecladotocado/tecladodo.png'),
-      'D': require('../../img/tecladotocado/tecladore.png'),
-      'E': require('../../img/tecladotocado/tecladomi.png'),
-      'F': require('../../img/tecladotocado/tecladofa.png'),
-      'G': require('../../img/tecladotocado/tecladosol.png'),
-      'A': require('../../img/tecladotocado/tecladola.png'),
-      'B': require('../../img/tecladotocado/tecladosi.png'),
+      // Mano derecha (MD)
+      'MD_C': require('../../img/tecladotocado/mdtecladodo.png'),
+      'MD_C#': require('../../img/tecladotocado/mdtecladoc#.png'),
+      'MD_D': require('../../img/tecladotocado/mdtecladore.png'),
+      'MD_D#': require('../../img/tecladotocado/mdtecladod#.png'),
+      'MD_E': require('../../img/tecladotocado/mdtecladomi.png'),
+      'MD_F': require('../../img/tecladotocado/mdtecladofa.png'),
+      'MD_F#': require('../../img/tecladotocado/mdtecladof#.png'),
+      'MD_G': require('../../img/tecladotocado/mdtecladosol.png'),
+      'MD_G#': require('../../img/tecladotocado/mdtecladog#.png'),
+      'MD_A': require('../../img/tecladotocado/mdtecladola.png'),
+      'MD_A#': require('../../img/tecladotocado/mdtecladoa#.png'),
+      'MD_B': require('../../img/tecladotocado/mdtecladosi.png'),
+      
+      // Mano izquierda (MI)
+      'MI_C': require('../../img/tecladotocado/mitecladodo.png'),
+      'MI_C#': require('../../img/tecladotocado/mitecladoc#.png'),
+      'MI_D': require('../../img/tecladotocado/mitecladore.png'),
+      'MI_D#': require('../../img/tecladotocado/mitecladod#.png'),
+      'MI_E': require('../../img/tecladotocado/mitecladomi.png'),
+      'MI_F': require('../../img/tecladotocado/mitecladofa.png'),
+      'MI_F#': require('../../img/tecladotocado/mitecladof#.png'),
+      'MI_G': require('../../img/tecladotocado/mitecladosol.png'),
+      'MI_G#': require('../../img/tecladotocado/mitecladog#.png'),
+      'MI_A': require('../../img/tecladotocado/mitecladola.png'),
+      'MI_A#': require('../../img/tecladotocado/mitecladoa#.png'),
+      'MI_B': require('../../img/tecladotocado/mitecladosi.png'),
     };
-    return noteMap[note?.toUpperCase()] || null;
+    
+    // Construir la clave: "MD_C", "MI_G", etc.
+    const key = `${mano}_${note?.toUpperCase()}`;
+    return noteMap[key] || null;
   }, []);
 
   // ✅ Función para reproducir ambos audios
@@ -108,7 +131,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     } finally {
       if (isMountedRef.current) {
         setIsReproducing(false);
-        // ⚠️ NO limpiar audioStartTime aquí - lo necesitamos para el timeline
       }
     }
   }, [playPreloadedAudio, playAudioFromUrl, pianoUrl, ttsUrl]);
@@ -164,7 +186,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     
     // Buscar eventos cercanos al tiempo actual (ventana de ±100ms)
     const currentEvents = timeline.timeline.filter(event => {
-      const eventKey = `${event.timestamp_ms}_${event.pitch}`;
+      const eventKey = `${event.timestamp_ms}_${event.pitch}_${event.mano}`;
       const timeDiff = Math.abs(event.timestamp_ms - elapsedTimeMs);
       
       // Solo procesar eventos dentro de la ventana de tiempo y no procesados previamente
@@ -180,30 +202,30 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       });
 
       const event = currentEvents[0];
-      const eventKey = `${event.timestamp_ms}_${event.pitch}`;
+      const eventKey = `${event.timestamp_ms}_${event.pitch}_${event.mano}`;
       
       // Marcar como procesado
       processedEventsRef.current.add(eventKey);
       
       const note = event.pitch?.toUpperCase();
+      const mano = event.mano?.toUpperCase(); // MD o MI
       
       console.log('🎹 NOTA DETECTADA:', {
         nota: note,
+        mano: mano,
         timestamp_evento: event.timestamp_ms,
         tiempo_actual: elapsedTimeMs,
-        diferencia: Math.abs(event.timestamp_ms - elapsedTimeMs),
-        mano: event.mano
+        diferencia: Math.abs(event.timestamp_ms - elapsedTimeMs)
       });
 
-      if (note && /[A-G]/.test(note)) {
-        const keyImage = getKeyImageForNote(note);
+      if (note && mano && /[A-G]/.test(note) && (mano === 'MD' || mano === 'MI')) {
+        const keyImage = getKeyImageForNote(note, mano);
         
         if (keyImage) {
-          console.log('✅ Mostrando tecla:', note, 'Ruta:', keyImage);
+          console.log(`✅ Mostrando tecla ${mano}: ${note}`);
           setCurrentKeyImage(keyImage);
-          // ✅ NO ocultamos automáticamente - se mantiene hasta la siguiente nota
         } else {
-          console.warn('⚠️ No hay imagen para nota:', note);
+          console.warn(`⚠️ No hay imagen para ${mano}_${note}`);
         }
       }
     }
@@ -248,7 +270,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         stopAudioRef.current();
       }
       
-      // Limpiar timeline tracking
       if (timelineCheckIntervalRef.current) {
         clearInterval(timelineCheckIntervalRef.current);
         timelineCheckIntervalRef.current = null;
@@ -378,7 +399,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
                 accessibilityLabel="Teclado de piano"
               />
               
-              {/* Tecla iluminada superpuesta */}
+              {/* Tecla iluminada superpuesta según mano (MD/MI) */}
               {currentKeyImage && (
                 <View
                   style={{
