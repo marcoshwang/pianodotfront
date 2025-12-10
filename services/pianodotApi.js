@@ -1,31 +1,34 @@
-// Servicio API centralizado para PianoDot usando fetch
 import { getBaseURL, getAuthHeaders } from '../config/api.config';
-import { getAuthToken, getAuthTokenSync, getAccessToken } from '../auth/cognitoAuth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuthToken, getAccessToken, getValidToken } from '../auth/cognitoAuth';
+import { clearAuthStorage } from '../auth/secureStorage';
 
 const BASE_URL = getBaseURL();
-const TIMEOUT = 10000;
-const TOKEN_KEY = '@pianodot:id_token';
+const TIMEOUT = 30000;
 
 // ===== HELPERS INTERNOS =====
 
+/**
+ * Crea headers con autenticación
+ * Intenta obtener el token de forma segura con fallbacks
+ */
 const createHeaders = async (customHeaders = {}, options = {}) => {
   let token = null;
+  
   try {
-    token = await getAccessToken();
+    // 1. Intentar obtener un token válido (con refresh automático si es necesario)
+    token = await getValidToken();
     
+    // 2. Si no hay token válido, intentar obtener access token directo
+    if (!token) {
+      token = await getAccessToken();
+    }
+    
+    // 3. Si aún no hay token, intentar ID token
     if (!token) {
       token = await getAuthToken();
-      
-      if (!token) {
-        token = await AsyncStorage.getItem(TOKEN_KEY);
-        if (!token) {
-          token = getAuthTokenSync();
-        }
-      }
     }
   } catch (error) {
-    token = getAuthTokenSync();
+    console.error('Error obteniendo token:', error);
   }
   
   const baseHeaders = getAuthHeaders();
@@ -46,26 +49,48 @@ const createHeaders = async (customHeaders = {}, options = {}) => {
   return headers;
 };
 
+/**
+ * Maneja las respuestas de la API
+ */
 const handleResponse = async (response) => {
   if (!response.ok) {
-    let errorMessage = `Error ${response.status}: ${response.statusText}`;
+    let errorMessage = 'Error en la solicitud';
     
     try {
       const errorData = await response.json();
-      errorMessage = errorData.message || errorData.detail || errorMessage;
+      
+      // Manejar errores específicos sin exponer detalles técnicos
+      if (response.status === 401) {
+        errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+      } else if (response.status === 403) {
+        errorMessage = 'No tienes permisos para realizar esta acción.';
+      } else if (response.status === 404) {
+        errorMessage = 'Recurso no encontrado.';
+      } else if (response.status === 429) {
+        errorMessage = 'Demasiadas solicitudes. Por favor, intenta más tarde.';
+      } else if (response.status >= 500) {
+        errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
+      } else {
+        errorMessage = errorData.message || errorData.detail || errorMessage;
+      }
     } catch (e) {
-      // Usar mensaje por defecto
+      // Si no se puede parsear, usar mensaje por defecto según status
+      if (response.status === 401) {
+        errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+      }
     }
     
     const error = new Error(errorMessage);
     error.status = response.status;
-    error.statusText = response.statusText;
     throw error;
   }
   
   return response;
 };
 
+/**
+ * Fetch con timeout
+ */
 const fetchWithTimeout = async (url, options = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
@@ -80,9 +105,236 @@ const fetchWithTimeout = async (url, options = {}) => {
   } catch (error) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('Request timeout');
+      throw new Error('La solicitud tardó demasiado tiempo. Verifica tu conexión.');
     }
     throw error;
+  }
+};
+
+// ===== ENDPOINTS DE AUTENTICACIÓN =====
+
+let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession, signInWithRedirect;
+
+const getAuthFunctions = async () => {
+  if (!signIn) {
+    const authModule = await import('aws-amplify/auth');
+    signIn = authModule.signIn;
+    signUp = authModule.signUp;
+    signOut = authModule.signOut;
+    getCurrentUserFn = authModule.getCurrentUser;
+    fetchAuthSession = authModule.fetchAuthSession;
+    signInWithRedirect = authModule.signInWithRedirect;
+  }
+  return { 
+    signIn, 
+    signUp, 
+    signOut, 
+    getCurrentUser: getCurrentUserFn, 
+    fetchAuthSession, 
+    signInWithRedirect 
+  };
+};
+
+/**
+ * Login con email y contraseña
+ */
+export const login = async (email, password) => {
+  try {
+    const { signIn, signOut, getCurrentUser } = await getAuthFunctions();
+    
+    // Limpiar sesión existente si hay alguna
+    try {
+      const existingUser = await getCurrentUser();
+      if (existingUser) {
+        await signOut();
+        await clearAuthStorage();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (e) {
+      await clearAuthStorage();
+    }
+    
+    // Iniciar sesión
+    const { isSignedIn } = await signIn({ 
+      username: email, 
+      password 
+    });
+    
+    if (!isSignedIn) {
+      throw new Error('No se pudo iniciar sesión');
+    }
+    
+    const cognitoUser = await getCurrentUser();
+    return cognitoUser;
+    
+  } catch (error) {
+    let errorMessage = 'Error al iniciar sesión';
+    
+    if (error.code === 'NotAuthorizedException') {
+      errorMessage = 'Credenciales incorrectas';
+    } else if (error.code === 'UserNotConfirmedException') {
+      errorMessage = 'Usuario no confirmado. Verifica tu email.';
+    } else if (error.code === 'UserNotFoundException') {
+      errorMessage = 'Usuario no encontrado';
+    } else if (error.code === 'TooManyRequestsException') {
+      errorMessage = 'Demasiados intentos. Por favor, intenta más tarde.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    const customError = new Error(errorMessage);
+    customError.code = error.code;
+    throw customError;
+  }
+};
+
+/**
+ * Login con Google
+ */
+export const loginWithGoogle = async () => {
+  try {
+    const { signInWithRedirect, signOut, getCurrentUser } = await getAuthFunctions();
+    
+    // Limpiar sesión existente
+    try {
+      const existingUser = await getCurrentUser();
+      if (existingUser) {
+        await clearAuthStorage();
+        
+        try {
+          await signOut();
+        } catch (signOutError) {
+          console.warn('Error cerrando sesión previa:', signOutError);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } catch (e) {
+      // No hay usuario autenticado
+    }
+    
+    await signInWithRedirect({ provider: 'Google' });
+    
+  } catch (error) {
+    let errorMessage = 'Error al iniciar sesión con Google';
+    
+    if (error.code === 'UserAlreadyAuthenticatedException') {
+      try {
+        const { signOut } = await getAuthFunctions();
+        await signOut();
+        await clearAuthStorage();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const { signInWithRedirect } = await getAuthFunctions();
+        await signInWithRedirect({ provider: 'Google' });
+        return;
+      } catch (retryError) {
+        errorMessage = 'No se pudo cerrar la sesión previa. Por favor, intenta nuevamente.';
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    const customError = new Error(errorMessage);
+    customError.code = error.code;
+    throw customError;
+  }
+};
+
+/**
+ * Registro de usuario
+ */
+export const register = async (email, password, name = null) => {
+  try {
+    const { signUp } = await getAuthFunctions();
+    
+    const attributes = { email };
+    if (name) {
+      attributes.name = name;
+    }
+    
+    const { userId } = await signUp({
+      username: email,
+      password,
+      options: {
+        userAttributes: attributes,
+      },
+    });
+    
+    return {
+      success: true,
+      userId,
+      message: 'Usuario registrado. Verifica tu email para confirmar la cuenta.',
+    };
+  } catch (error) {
+    let errorMessage = 'Error al registrar usuario';
+    
+    if (error.code === 'UsernameExistsException') {
+      errorMessage = 'Este email ya está registrado';
+    } else if (error.code === 'InvalidPasswordException') {
+      errorMessage = 'La contraseña no cumple los requisitos';
+    } else if (error.code === 'InvalidParameterException') {
+      errorMessage = 'Email inválido';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    const customError = new Error(errorMessage);
+    customError.code = error.code;
+    throw customError;
+  }
+};
+
+/**
+ * Cerrar sesión
+ */
+export const logout = async () => {
+  try {
+    const { signOut } = await getAuthFunctions();
+    await signOut();
+    await clearAuthStorage();
+  } catch (error) {
+    try {
+      await clearAuthStorage();
+    } catch (e) {
+      console.error('Error limpiando almacenamiento:', e);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Obtener usuario actual
+ */
+export const getCurrentUser = async () => {
+  try {
+    const { getCurrentUser: getCurrentUserFn } = await getAuthFunctions();
+    const user = await getCurrentUserFn();
+    return user;
+  } catch (error) {
+    if (error.name === 'NotAuthorizedException' || 
+        error.message?.includes('not authenticated')) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+/**
+ * Refrescar token
+ */
+export const refreshToken = async () => {
+  try {
+    const { fetchAuthSession } = await getAuthFunctions();
+    const session = await fetchAuthSession({ forceRefresh: true });
+    
+    if (!session.tokens || !session.tokens.idToken) {
+      throw new Error('No se pudo refrescar la sesión');
+    }
+    
+    const idToken = session.tokens.idToken.toString();
+    return idToken;
+  } catch (error) {
+    throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
   }
 };
 
@@ -105,19 +357,15 @@ export const uploadPartitura = async (fileData) => {
         name: fileData.name,
       });
       
-      const response = await fetch(uploadURL, {
+      const response = await fetchWithTimeout(uploadURL, {
         method: 'POST',
         body: formData,
         headers: headers,
       });
       
-      if (response.ok) {
-        const result = await response.json();
-        resolve(result);
-      } else {
-        const errorText = await response.text();
-        reject(new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`));
-      }
+      await handleResponse(response);
+      const result = await response.json();
+      resolve(result);
     } catch (error) {
       reject(error);
     }
@@ -243,218 +491,6 @@ export const getTimeline = async (partituraId, compas) => {
     
     await handleResponse(response);
     return await response.json();
-  } catch (error) {
-    throw error;
-  }
-};
-
-// ===== ENDPOINTS DE AUTENTICACIÓN =====
-
-let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession, signInWithRedirect;
-
-const getAuthFunctions = async () => {
-  if (!signIn) {
-    const authModule = await import('aws-amplify/auth');
-    signIn = authModule.signIn;
-    signUp = authModule.signUp;
-    signOut = authModule.signOut;
-    getCurrentUserFn = authModule.getCurrentUser;
-    fetchAuthSession = authModule.fetchAuthSession;
-    signInWithRedirect = authModule.signInWithRedirect;
-  }
-  return { signIn, signUp, signOut, getCurrentUser: getCurrentUserFn, fetchAuthSession, signInWithRedirect };
-};
-
-const clearAuthStorage = async () => {
-  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-  await Promise.all([
-    AsyncStorage.removeItem('@pianodot:id_token'),
-    AsyncStorage.removeItem('@pianodot:access_token'),
-    AsyncStorage.removeItem('@pianodot:refresh_token'),
-    AsyncStorage.removeItem('@pianodot:user'),
-  ]);
-};
-
-export const login = async (email, password) => {
-  try {
-    const { signIn, signOut, getCurrentUser } = await getAuthFunctions();
-    
-    try {
-      const existingUser = await getCurrentUser();
-      if (existingUser) {
-        await signOut();
-        await clearAuthStorage();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    } catch (e) {
-      await clearAuthStorage();
-    }
-    
-    const { isSignedIn } = await signIn({ username: email, password });
-    
-    if (!isSignedIn) {
-      throw new Error('No se pudo iniciar sesión');
-    }
-    
-    const cognitoUser = await getCurrentUser();
-    return cognitoUser;
-  } catch (error) {
-    let errorMessage = 'Error al iniciar sesión';
-    
-    if (error.code === 'NotAuthorizedException') {
-      errorMessage = 'Credenciales incorrectas';
-    } else if (error.code === 'UserNotConfirmedException') {
-      errorMessage = 'Usuario no confirmado. Verifica tu email.';
-    } else if (error.code === 'UserNotFoundException') {
-      errorMessage = 'Usuario no encontrado';
-    } else if (error.code === 'UserAlreadyAuthenticatedException') {
-      try {
-        await signOut();
-        await clearAuthStorage();
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const { isSignedIn } = await signIn({ username: email, password });
-        if (isSignedIn) {
-          const cognitoUser = await getCurrentUser();
-          return cognitoUser;
-        }
-        throw new Error('No se pudo iniciar sesión después de limpiar');
-      } catch (e) {
-        errorMessage = 'Error al limpiar sesión previa. Por favor, cierra sesión manualmente e intenta nuevamente.';
-      }
-    } else if (error.code === 'InvalidParameterException') {
-      errorMessage = error.message || 'Error en la configuración de autenticación';
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    const customError = new Error(errorMessage);
-    customError.code = error.code;
-    throw customError;
-  }
-};
-
-export const loginWithGoogle = async () => {
-  try {
-    const { signInWithRedirect, signOut, getCurrentUser } = await getAuthFunctions();
-    
-    try {
-      const existingUser = await getCurrentUser();
-      if (existingUser) {
-        await clearAuthStorage();
-        
-        try {
-          await signOut();
-        } catch (signOutError) {
-          // Continuar de todas formas
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    } catch (e) {
-      // No hay usuario autenticado, continuar
-    }
-    
-    await signInWithRedirect({ provider: 'Google' });
-  } catch (error) {
-    let errorMessage = 'Error al iniciar sesión con Google';
-    
-    if (error.code === 'UserAlreadyAuthenticatedException') {
-      try {
-        const { signOut } = await getAuthFunctions();
-        await signOut();
-        await clearAuthStorage();
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const { signInWithRedirect } = await getAuthFunctions();
-        await signInWithRedirect({ provider: 'Google' });
-        return;
-      } catch (retryError) {
-        errorMessage = 'No se pudo cerrar la sesión previa. Por favor, cierra sesión manualmente e intenta nuevamente.';
-      }
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    const customError = new Error(errorMessage);
-    customError.code = error.code;
-    throw customError;
-  }
-};
-
-export const register = async (email, password, name = null) => {
-  try {
-    const { signUp } = await getAuthFunctions();
-    
-    const attributes = { email };
-    if (name) {
-      attributes.name = name;
-    }
-    
-    const { userId } = await signUp({
-      username: email,
-      password,
-      options: {
-        userAttributes: attributes,
-      },
-    });
-    
-    return {
-      success: true,
-      userId,
-      message: 'Usuario registrado. Verifica tu email para confirmar la cuenta.',
-    };
-  } catch (error) {
-    let errorMessage = 'Error al registrar usuario';
-    
-    if (error.code === 'UsernameExistsException') {
-      errorMessage = 'Este email ya está registrado';
-    } else if (error.code === 'InvalidPasswordException') {
-      errorMessage = 'La contraseña no cumple los requisitos';
-    } else if (error.code === 'InvalidParameterException') {
-      errorMessage = 'Email inválido';
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    const customError = new Error(errorMessage);
-    customError.code = error.code;
-    throw customError;
-  }
-};
-
-export const logout = async () => {
-  try {
-    const { signOut } = await getAuthFunctions();
-    await signOut();
-    await clearAuthStorage();
-  } catch (error) {
-    try {
-      await clearAuthStorage();
-    } catch (e) {
-      // Error limpiando AsyncStorage
-    }
-    throw error;
-  }
-};
-
-export const getCurrentUser = async () => {
-  try {
-    const { getCurrentUser: getCurrentUserFn } = await getAuthFunctions();
-    const user = await getCurrentUserFn();
-    return user;
-  } catch (error) {
-    if (error.name === 'NotAuthorizedException' || error.message?.includes('not authenticated')) {
-      return null;
-    }
-    throw error;
-  }
-};
-
-export const refreshToken = async () => {
-  try {
-    const { fetchAuthSession } = await getAuthFunctions();
-    const session = await fetchAuthSession();
-    const idToken = session.tokens.idToken.toString();
-    return idToken;
   } catch (error) {
     throw error;
   }

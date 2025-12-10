@@ -5,6 +5,7 @@ import { saveUserConfig } from '../../services/pianodotApi';
 const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, updateSetting, fontSizeConfig, contrastConfig, resetSettings }) => {
   const [saveTimeout, setSaveTimeout] = useState(null);
   const [pendingSaves, setPendingSaves] = useState(new Set());
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Cleanup al desmontar
   useEffect(() => {
@@ -42,8 +43,6 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
 
   /**
    * Guardar configuración en el backend
-   * @param {string} field - Campo a actualizar ('fontSize', 'contrast', 'vibration')
-   * @param {any} value - Valor a guardar
    */
   const saveSettingToBackend = async (field, value) => {
     try {
@@ -52,10 +51,16 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
       const token = await getAuthToken();
 
       if (!token) {
-        throw new Error('No hay sesión activa');
+        console.warn('⚠️ No hay sesión activa, no se guardará en backend');
+        setPendingSaves(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(field);
+          return newSet;
+        });
+        return false;
       }
 
-      // Construir el payload mapeando valores del frontend al backend
+      // Construir payload
       const payload = mapFrontendToBackend(field, value);
 
       await saveUserConfig(payload);
@@ -69,7 +74,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
 
       return true;
     } catch (error) {
-      console.error('❌ Error guardando configuración:', error);
+      console.error('Error guardando configuración:', error);
       
       // Remover de pendientes
       setPendingSaves(prev => {
@@ -78,11 +83,14 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
         return newSet;
       });
       
-      Alert.alert(
-        'Error al guardar',
-        'No se pudo guardar la configuración en el servidor. El cambio se aplicó localmente pero no se sincronizó.',
-        [{ text: 'OK' }]
-      );
+      // Solo mostrar alerta si no es error de autenticación
+      if (error.status !== 401) {
+        Alert.alert(
+          'Error al guardar',
+          'No se pudo guardar la configuración en el servidor. El cambio se aplicó localmente.',
+          [{ text: 'OK' }]
+        );
+      }
       
       return false;
     }
@@ -90,8 +98,6 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
 
   /**
    * Manejar cambio de configuración con debouncing
-   * @param {string} setting - Nombre del setting ('fontSize', 'contrast', 'vibration')
-   * @param {any} value - Valor a establecer
    */
   const handleSettingChange = (setting, value) => {
     triggerVibration();
@@ -116,22 +122,30 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
   };
 
   const handleLogout = async () => {
-    // Si hay cambios pendientes, forzar guardado antes de logout
-    if (pendingSaves.size > 0) {
-      Alert.alert(
-        'Guardando cambios',
-        'Hay cambios pendientes de guardar. Espera un momento...',
-        [{ text: 'OK' }]
-      );
-      
-      // Esperar a que termine el timeout
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-        // Esperar un momento para que se completen los guardados pendientes
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+    if (isLoggingOut) {
+      return; // Prevenir múltiples clicks
     }
 
+    // Si hay cambios pendientes, advertir
+    if (pendingSaves.size > 0) {
+      Alert.alert(
+        'Cambios pendientes',
+        'Hay cambios que aún no se han guardado. ¿Deseas continuar?',
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+          },
+          {
+            text: 'Continuar',
+            onPress: () => proceedWithLogout(),
+          },
+        ]
+      );
+      return;
+    }
+
+    // Si no hay cambios pendientes, proceder directamente
     Alert.alert(
       'Cerrar Sesión',
       '¿Estás seguro de que quieres cerrar sesión?',
@@ -143,43 +157,55 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              triggerVibration();
-              
-              // 1. Resetear configuraciones localmente (SIN sincronizar con backend)
-              if (resetSettings) {
-                await resetSettings(true); // true = skipBackendSync
-              }
-              
-              // 2. Cerrar sesión de Cognito
-              try {
-                const { signOut } = await import('aws-amplify/auth');
-                await signOut();
-              } catch (cognitoError) {
-              }
-              
-              // 3. Limpiar todos los datos de autenticación
-              const { clearAllAuthData } = await import('../../auth/cognitoAuth');
-              await clearAllAuthData();
-              
-              // 4. Navegar a Welcome (reset completo del stack de navegación)
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Welcome' }],
-              });
-              
-            } catch (error) {
-              console.error('Error al cerrar sesión:', error);
-              Alert.alert(
-                'Error',
-                'Hubo un problema al cerrar sesión. Por favor, intenta nuevamente.'
-              );
-            }
-          },
+          onPress: () => proceedWithLogout(),
         },
       ]
     );
+  };
+
+  const proceedWithLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      triggerVibration();
+      
+      // Cancelar cualquier guardado pendiente
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+      
+      // 1. Resetear configuraciones localmente (SIN sincronizar con backend)
+      if (resetSettings) {
+        try {
+          await resetSettings(true); // true = skipBackendSync
+        } catch (resetError) {
+        }
+      }
+      
+      // 2. Limpiar todos los datos de autenticación (incluye signOut de Cognito)
+      try {
+        const { clearAllAuthData } = await import('../../auth/cognitoAuth');
+        await clearAllAuthData();
+      } catch (authError) {
+        console.error('Error limpiando autenticación:', authError);
+        // Continuar de todas formas
+      }
+      
+      // 3. Navegar a Welcome (reset completo del stack)
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Welcome' }],
+      });
+      
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      setIsLoggingOut(false);
+      
+      Alert.alert(
+        'Error',
+        'Hubo un problema al cerrar sesión. Por favor, intenta nuevamente.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (
@@ -219,6 +245,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.fontSize === 'normal' && styles.selectedOption]}
               onPress={() => handleSettingChange('fontSize', 'normal')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tamaño normal"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.fontSize === 'normal' }}
@@ -232,6 +259,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.fontSize === 'large' && styles.selectedOption]}
               onPress={() => handleSettingChange('fontSize', 'large')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tamaño grande"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.fontSize === 'large' }}
@@ -245,6 +273,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.fontSize === 'extraLarge' && styles.selectedOption]}
               onPress={() => handleSettingChange('fontSize', 'extraLarge')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tamaño extra grande"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.fontSize === 'extraLarge' }}
@@ -265,6 +294,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.contrast === 'whiteBlack' && styles.selectedOption]}
               onPress={() => handleSettingChange('contrast', 'whiteBlack')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tema claro"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.contrast === 'whiteBlack' }}
@@ -278,6 +308,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.contrast === 'blackWhite' && styles.selectedOption]}
               onPress={() => handleSettingChange('contrast', 'blackWhite')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tema oscuro"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.contrast === 'blackWhite' }}
@@ -291,6 +322,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.contrast === 'blackYellow' && styles.selectedOption]}
               onPress={() => handleSettingChange('contrast', 'blackYellow')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tema de alto contraste amarillo"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.contrast === 'blackYellow' }}
@@ -304,6 +336,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.contrast === 'blackBlue' && styles.selectedOption]}
               onPress={() => handleSettingChange('contrast', 'blackBlue')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tema de alto contraste azul"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.contrast === 'blackBlue' }}
@@ -317,6 +350,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.contrast === 'blackGreen' && styles.selectedOption]}
               onPress={() => handleSettingChange('contrast', 'blackGreen')}
+              disabled={isLoggingOut}
               accessibilityLabel="Tema de alto contraste verde"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.contrast === 'blackGreen' }}
@@ -337,6 +371,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.vibration === true && styles.selectedOption]}
               onPress={() => handleSettingChange('vibration', true)}
+              disabled={isLoggingOut}
               accessibilityLabel="Activar vibración"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.vibration === true }}
@@ -350,6 +385,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
             <TouchableOpacity 
               style={[styles.optionButton, settings.vibration === false && styles.selectedOption]}
               onPress={() => handleSettingChange('vibration', false)}
+              disabled={isLoggingOut}
               accessibilityLabel="Desactivar vibración"
               accessibilityRole="button"
               accessibilityState={{ selected: settings.vibration === false }}
@@ -366,14 +402,19 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
         <View style={styles.settingsSection}>
           <View style={{ justifyContent: 'center' }}>
             <TouchableOpacity 
-              style={styles.logoutButton}
+              style={[
+                styles.logoutButton,
+                isLoggingOut && { opacity: 0.5 }
+              ]}
               onPress={handleLogout}
+              disabled={isLoggingOut}
               accessibilityLabel="Cerrar sesión"
               accessibilityRole="button"
               accessibilityHint="Cerrar sesión y eliminar todos los datos guardados"
+              accessibilityState={{ disabled: isLoggingOut }}
             >
               <Text style={styles.logoutButtonText}>
-                CERRAR SESIÓN
+                {isLoggingOut ? 'CERRANDO SESIÓN...' : 'CERRAR SESIÓN'}
               </Text>
             </TouchableOpacity>
           </View>

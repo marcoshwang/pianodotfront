@@ -204,10 +204,9 @@ const processOAuthCallback = async (url) => {
       throw new Error('No se pudo obtener el usuario');
     }
        
-    // Guardar datos (crítico hacerlo ANTES de navegar)
-    const { saveAuthData, loadAuthData } = await import('./auth/cognitoAuth');
+    // Usar saveAuthData
+    const { saveAuthData } = await import('./auth/cognitoAuth');
     await saveAuthData(cognitoUser);
-    await loadAuthData();
     
     
     // Recargar configuraciones desde el backend
@@ -217,7 +216,6 @@ const processOAuthCallback = async (url) => {
       
       const backendConfig = await getUserConfig();
       if (backendConfig) {
-        // Mapear valores del backend al frontend
         const fontSizeMap = {
           'normal': 'normal',
           'grande': 'large',
@@ -230,18 +228,17 @@ const processOAuthCallback = async (url) => {
           vibration: backendConfig.vibracion !== undefined ? backendConfig.vibracion : true
         };
         
-        // Guardar en AsyncStorage para que useSettings las detecte
         await AsyncStorage.setItem('pianoSettings', JSON.stringify(frontendSettings));
         
-        //Notificar a useSettings que recargue
         try {
           const { settingsEvents } = await import('./src/utils/settingsEvents');
           settingsEvents.emit();
         } catch (emitError) {
+          console.log('No se pudieron emitir eventos de settings');
         }
       }
     } catch (configError) {
-      // No es crítico, el hook las cargará después
+      console.log('No se pudieron cargar configuraciones del backend');
     }
     
     // Navegar a Home
@@ -323,10 +320,10 @@ const useDeepLinkHandler = () => {
       } catch (error) {
         console.error('Error en callback de OAuth:', error.message);
         
-        // Limpiar datos parciales
+        // Usar clearAuthData
         try {
-          const { clearAllAuthData } = await import('./auth/cognitoAuth');
-          await clearAllAuthData();
+          const { clearAuthData } = await import('./auth/cognitoAuth');
+          await clearAuthData();
         } catch (cleanupError) {
           console.error('Error limpiando datos:', cleanupError);
         }
@@ -458,34 +455,32 @@ export default function App() {
     Fredoka_700Bold,
   });
 
-  // Cargar datos de autenticación al iniciar
+  //Cargar datos de autenticación al iniciar
   React.useEffect(() => {
     const loadAuth = async () => {
       try {
-        const { loadAuthData, saveAuthData } = await import('./auth/cognitoAuth');
-        const { getCurrentUser } = await import('aws-amplify/auth');
+        // Importar funciones correctas
+        const { isAuthenticated, saveAuthData } = await import('./auth/cognitoAuth');
+        const { getCurrentUser, fetchAuthSession } = await import('aws-amplify/auth');
         
-        // Verificar si hay un callback de OAuth (cuando regresa de Google)
+        // Verificar si hay una sesión activa (OAuth callback)
         try {
-          const { fetchAuthSession } = await import('aws-amplify/auth');
           const session = await fetchAuthSession();
           
-          // Si hay una sesión activa después de un redirect, obtener el usuario
-          if (session.tokens && session.tokens.idToken) {
+          if (session?.tokens?.idToken) {
             const cognitoUser = await getCurrentUser();
             if (cognitoUser) {
               await saveAuthData(cognitoUser);
             }
           }
         } catch (oauthError) {
-          console.log('No hay sesión de OAuth activa');
         }
         
-        const hasAuth = await loadAuthData();
-        
-        //NAVEGACIÓN AUTOMÁTICA SI TIENE SESIÓN
+        // Verificar si el usuario está autenticado
+        const hasAuth = await isAuthenticated();
+          
+        // Navegación automática si tiene sesión
         if (hasAuth) {
-          // Esperar a que la navegación esté lista
           setTimeout(() => {
             if (navigationRef.current?.isReady()) {
               navigationRef.current.reset({
@@ -493,7 +488,7 @@ export default function App() {
                 routes: [{ name: 'Home' }],
               });
             } else {
-              // Si no está listo, reintentar después de un momento
+              // Reintentar después de un momento
               setTimeout(() => {
                 if (navigationRef.current?.isReady()) {
                   navigationRef.current.reset({
@@ -506,10 +501,10 @@ export default function App() {
           }, 100);
         }
       } catch (error) {
-        console.error('Error cargando autenticación:', error);
+        // Limpiar datos si hay error
         try {
-          const { clearAllAuthData } = await import('./auth/cognitoAuth');
-          await clearAllAuthData();
+          const { clearAuthData } = await import('./auth/cognitoAuth');
+          await clearAuthData();
         } catch (clearError) {
           console.error('Error limpiando datos:', clearError);
         }
