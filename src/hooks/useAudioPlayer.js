@@ -150,7 +150,7 @@ export const useAudioPlayer = () => {
             cleanup();
             resolve(true);
           }
-        }, 180000);
+        }, 240000);
 
         preloadedSound.playAsync().then(async () => {
           setSound(preloadedSound);
