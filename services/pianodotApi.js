@@ -216,6 +216,20 @@ export const loginWithGoogle = async () => {
     await signInWithRedirect({ provider: 'Google' });
     
   } catch (error) {
+    // Detectar si el usuario canceló la autenticación
+    const isCancelled = 
+      error.message?.toLowerCase().includes('canceled') ||
+      error.message?.toLowerCase().includes('cancelled') ||
+      error.code === 'UserCancelledException' ||
+      error.name === 'UserCancelledException';
+    
+    // Si el usuario canceló, no lanzar error (es una acción normal del usuario)
+    if (isCancelled) {
+      const cancellationError = new Error('Autenticación cancelada por el usuario');
+      cancellationError.isCancellation = true;
+      throw cancellationError;
+    }
+    
     let errorMessage = 'Error al iniciar sesión con Google';
     
     if (error.code === 'UserAlreadyAuthenticatedException') {

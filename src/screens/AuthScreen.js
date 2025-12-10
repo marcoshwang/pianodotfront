@@ -61,13 +61,21 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
       }, 60000);
       
     } catch (error) {
-      console.error('Error en autenticación con Google:', error);
-      
       // Resetear estados
       setIsLoadingGoogle(false);
       setOauthInitiated(false);
       
-      // Mostrar error al usuario
+      // Si el usuario canceló la autenticación, no mostrar error (es una acción normal)
+      if (error.isCancellation || 
+          error.message?.toLowerCase().includes('cancel') ||
+          error.message?.includes('cancelada por el usuario')) {
+        // Solo log en consola para debugging, sin mostrar alert al usuario
+        console.log('Autenticación con Google cancelada por el usuario');
+        return;
+      }
+      
+      // Para otros errores, mostrar alert al usuario
+      console.error('Error en autenticación con Google:', error);
       Alert.alert(
         'Error de autenticación',
         error.message || 'No se pudo iniciar sesión con Google. Por favor, intenta nuevamente.',
