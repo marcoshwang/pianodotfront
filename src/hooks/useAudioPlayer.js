@@ -27,7 +27,7 @@ export const useAudioPlayer = () => {
   // Precargar audio
   const preloadAudio = useCallback(async (audioUrl, type = 'audio') => {
     try {
-      console.log(`Precargando audio ${type} desde URL: ${audioUrl}`);
+      // Truncar URL para evitar logs muy largos (mostrar solo primeros 100 caracteres)
       
       // Configurar modo de audio
       await configureAudioMode();
@@ -67,6 +67,21 @@ export const useAudioPlayer = () => {
         throw new Error(`Audio ${type} no está precargado`);
       }
 
+      // Limpiar cualquier callback previo antes de empezar
+      preloadedSound.setOnPlaybackStatusUpdate(null);
+      
+      // Detener y resetear el audio si estaba reproduciéndose
+      try {
+        const currentStatus = await preloadedSound.getStatusAsync();
+        if (currentStatus.isLoaded && currentStatus.isPlaying) {
+          await preloadedSound.stopAsync();
+        }
+        // Resetear a posición 0 para asegurar que empiece desde el principio
+        await preloadedSound.setPositionAsync(0);
+      } catch (err) {
+        // Ignorar errores al resetear
+      }
+
       setIsPlaying(true);
       setError(null);
 
@@ -82,12 +97,49 @@ export const useAudioPlayer = () => {
       return new Promise((resolve, reject) => {
         let hasFinished = false;
         let timeoutId = null;
+        let callbackCleaned = false;
+
+        // Función para limpiar todo de forma segura
+        const cleanup = () => {
+          if (callbackCleaned) return; // Ya se limpió, evitar múltiples limpiezas
+          callbackCleaned = true;
+          
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+          
+          // Limpiar callback de forma síncrona
+          try {
+            preloadedSound.setOnPlaybackStatusUpdate(null);
+          } catch (err) {
+            // Ignorar errores al limpiar
+          }
+          
+          // Detener audio físicamente
+          preloadedSound.stopAsync().catch(() => {});
+          
+          setIsPlaying(false);
+        };
 
         // Callback para monitorear el estado de reproducción
         preloadedSound.setOnPlaybackStatusUpdate((status) => {
-          if (hasFinished) return; // Ya terminó, ignorar actualizaciones
+          // Verificación doble: hasFinished Y callbackCleaned
+          if (hasFinished || callbackCleaned) {
+            return; // Ya terminó, ignorar TODAS las actualizaciones
+          }
 
           if (status.isLoaded) {
+            // Verificar si terminó
+            if (status.didJustFinish) {
+              hasFinished = true;
+              console.log(`Audio ${type} terminado correctamente`);
+              
+              cleanup();
+              resolve(true);
+              return; // Salir inmediatamente
+            }
+            
             // Log solo ocasionalmente para reducir spam (cada ~2 segundos)
             if (status.positionMillis % 2000 < 500) {
               console.log(`Reproduciendo ${type}:`, {
@@ -96,44 +148,25 @@ export const useAudioPlayer = () => {
                 isPlaying: status.isPlaying
               });
             }
-
-            // Verificar si terminó
-            if (status.didJustFinish) {
-              hasFinished = true;
-              if (timeoutId) clearTimeout(timeoutId);
-              
-              console.log(`Audio ${type} terminado correctamente`);
-              setIsPlaying(false);
-              
-              // Limpiar el callback
-              preloadedSound.setOnPlaybackStatusUpdate(null);
-              resolve(true);
-            }
           } else if (status.error) {
             hasFinished = true;
-            if (timeoutId) clearTimeout(timeoutId);
-            
             console.error(`Error en reproducción ${type}:`, status.error);
-            setIsPlaying(false);
             
-            // Limpiar el callback
-            preloadedSound.setOnPlaybackStatusUpdate(null);
+            cleanup();
             reject(new Error(status.error));
           }
         });
 
         //Timeout de seguridad aumentado a 2 minutos (120 segundos)
         timeoutId = setTimeout(() => {
-          if (!hasFinished) {
+          if (!hasFinished && !callbackCleaned) {
             hasFinished = true;
-            console.log(`Timeout para audio ${type} después de 120s, asumiendo que terminó`);
-            setIsPlaying(false);
+            console.log(`Timeout para audio ${type} después de 180s, asumiendo que terminó`);
             
-            // Limpiar el callback
-            preloadedSound.setOnPlaybackStatusUpdate(null);
+            cleanup();
             resolve(true);
           }
-        }, 120000); // 120 segundos = 2 minutos
+        }, 180000); // 180 segundos = 2 minutos
 
         // Iniciar reproducción DESPUÉS de configurar el callback
         preloadedSound.playAsync().then(async () => {
@@ -150,15 +183,11 @@ export const useAudioPlayer = () => {
           
           console.log(`Audio ${type} reproduciéndose...`);
         }).catch((err) => {
-          if (!hasFinished) {
+          if (!hasFinished && !callbackCleaned) {
             hasFinished = true;
-            if (timeoutId) clearTimeout(timeoutId);
-            
             console.error(`Error iniciando reproducción ${type}:`, err);
-            setIsPlaying(false);
             
-            // Limpiar el callback
-            preloadedSound.setOnPlaybackStatusUpdate(null);
+            cleanup();
             reject(err);
           }
         });
@@ -271,26 +300,51 @@ export const useAudioPlayer = () => {
       // 1. Detener audio principal si existe
       if (soundRef.current) {
         try {
-          // Limpiar callbacks antes de detener
-          soundRef.current.setOnPlaybackStatusUpdate(null);
-          await soundRef.current.stopAsync();
-          await soundRef.current.unloadAsync();
+          // Verificar estado antes de detener
+          const status = await soundRef.current.getStatusAsync();
+          if (status.isLoaded) {
+            // Limpiar callbacks antes de detener
+            soundRef.current.setOnPlaybackStatusUpdate(null);
+            if (status.isPlaying) {
+              await soundRef.current.stopAsync();
+            }
+            await soundRef.current.unloadAsync();
+          }
         } catch (err) {
-          console.log('Error deteniendo audio principal:', err);
+          // Si el sonido ya fue descargado o no está cargado, ignorar el error
+          if (!err.message?.includes('not loaded') && !err.message?.includes('Cannot complete')) {
+            console.log('Error deteniendo audio principal:', err);
+          }
         }
         soundRef.current = null;
         setSound(null);
       }
       
-      // 2. Detener todos los audios precargados
+      // 2. Detener solo los audios precargados que están reproduciéndose
+      // NO descargar los audios precargados que no están reproduciéndose
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
           try {
-            sound.setOnPlaybackStatusUpdate(null);
-            await sound.stopAsync();
-            await sound.unloadAsync();
+            // Verificar estado antes de detener
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              // Limpiar callback siempre
+              sound.setOnPlaybackStatusUpdate(null);
+              
+              // Solo detener si está reproduciéndose
+              if (status.isPlaying) {
+                await sound.stopAsync();
+                // Resetear posición para que esté listo para la próxima reproducción
+                await sound.setPositionAsync(0).catch(() => {});
+              }
+              // IMPORTANTE: NO descargar (unloadAsync) los audios precargados
+              // para que estén disponibles para la siguiente reproducción
+            }
           } catch (err) {
-            console.log(`Error deteniendo audio precargado ${type}:`, err);
+            // Si el sonido ya fue descargado o no está cargado, ignorar el error
+            if (!err.message?.includes('not loaded') && !err.message?.includes('Cannot complete')) {
+              console.log(`Error deteniendo audio precargado ${type}:`, err);
+            }
           }
         }
       }
@@ -301,7 +355,10 @@ export const useAudioPlayer = () => {
       
       console.log('Audio detenido completamente');
     } catch (error) {
-      console.error('Error deteniendo audio:', error);
+      // Si es un error de "not loaded", es normal y lo ignoramos
+      if (!error.message?.includes('not loaded') && !error.message?.includes('Cannot complete')) {
+        console.error('Error deteniendo audio:', error);
+      }
     }
   }, [preloadedSounds]);
 
@@ -312,18 +369,28 @@ export const useAudioPlayer = () => {
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
           try {
-            // Limpiar callback antes de descargar
-            sound.setOnPlaybackStatusUpdate(null);
-            await sound.unloadAsync();
+            // Verificar estado antes de descargar
+            const status = await sound.getStatusAsync();
+            if (status.isLoaded) {
+              // Limpiar callback antes de descargar
+              sound.setOnPlaybackStatusUpdate(null);
+              await sound.unloadAsync();
+            }
           } catch (err) {
-            console.log(`Error limpiando audio ${type}:`, err);
+            // Si el sonido ya fue descargado o no está cargado, ignorar el error
+            if (!err.message?.includes('not loaded') && !err.message?.includes('Cannot complete')) {
+              console.log(`Error limpiando audio ${type}:`, err);
+            }
           }
         }
       }
       setPreloadedSounds({});
       console.log('Audios precargados limpiados');
     } catch (error) {
-      console.error('Error limpiando audios precargados:', error);
+      // Si es un error de "not loaded", es normal y lo ignoramos
+      if (!error.message?.includes('not loaded') && !error.message?.includes('Cannot complete')) {
+        console.error('Error limpiando audios precargados:', error);
+      }
     }
   }, [preloadedSounds]);
 

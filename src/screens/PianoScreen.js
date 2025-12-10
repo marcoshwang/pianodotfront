@@ -51,30 +51,30 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     const noteMap = {
       // Mano derecha (MD)
       'MD_C': require('../../img/tecladotocado/mdtecladodo.png'),
-      'MD_C#': require('../../img/tecladotocado/mdtecladoc#.png'),
+      'MD_C#': require('../../img/tecladotocado/mdtecladocs.png'),
       'MD_D': require('../../img/tecladotocado/mdtecladore.png'),
-      'MD_D#': require('../../img/tecladotocado/mdtecladod#.png'),
+      'MD_D#': require('../../img/tecladotocado/mdtecladods.png'),
       'MD_E': require('../../img/tecladotocado/mdtecladomi.png'),
       'MD_F': require('../../img/tecladotocado/mdtecladofa.png'),
-      'MD_F#': require('../../img/tecladotocado/mdtecladof#.png'),
+      'MD_F#': require('../../img/tecladotocado/mdtecladofs.png'),
       'MD_G': require('../../img/tecladotocado/mdtecladosol.png'),
-      'MD_G#': require('../../img/tecladotocado/mdtecladog#.png'),
+      'MD_G#': require('../../img/tecladotocado/mdtecladogs.png'),
       'MD_A': require('../../img/tecladotocado/mdtecladola.png'),
-      'MD_A#': require('../../img/tecladotocado/mdtecladoa#.png'),
+      'MD_A#': require('../../img/tecladotocado/mdtecladoas.png'),
       'MD_B': require('../../img/tecladotocado/mdtecladosi.png'),
       
       // Mano izquierda (MI)
       'MI_C': require('../../img/tecladotocado/mitecladodo.png'),
-      'MI_C#': require('../../img/tecladotocado/mitecladoc#.png'),
+      'MI_C#': require('../../img/tecladotocado/mitecladocs.png'),
       'MI_D': require('../../img/tecladotocado/mitecladore.png'),
-      'MI_D#': require('../../img/tecladotocado/mitecladod#.png'),
+      'MI_D#': require('../../img/tecladotocado/mitecladods.png'),
       'MI_E': require('../../img/tecladotocado/mitecladomi.png'),
       'MI_F': require('../../img/tecladotocado/mitecladofa.png'),
-      'MI_F#': require('../../img/tecladotocado/mitecladof#.png'),
+      'MI_F#': require('../../img/tecladotocado/mitecladofs.png'),
       'MI_G': require('../../img/tecladotocado/mitecladosol.png'),
-      'MI_G#': require('../../img/tecladotocado/mitecladog#.png'),
+      'MI_G#': require('../../img/tecladotocado/mitecladogs.png'),
       'MI_A': require('../../img/tecladotocado/mitecladola.png'),
-      'MI_A#': require('../../img/tecladotocado/mitecladoa#.png'),
+      'MI_A#': require('../../img/tecladotocado/mitecladoas.png'),
       'MI_B': require('../../img/tecladotocado/mitecladosi.png'),
     };
     
@@ -102,11 +102,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       setCurrentKeyImage(null);
       processedEventsRef.current.clear();
       
-      // ⏰ Establecer tiempo de inicio ANTES de reproducir
-      const startTime = Date.now();
-      setAudioStartTime(startTime);
-      console.log('⏰ Inicio de reproducción - Timestamp:', startTime);
-      
+      // NO establecer audioStartTime aquí - se establecerá cuando comience el TTS
       console.log('🎵 Reproduciendo Piano...');
       try {
         await playPreloadedAudio('Piano');
@@ -117,13 +113,38 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       
       if (!isMountedRef.current || isNavigatingAwayRef.current) return;
       
+      // ⏰ Establecer tiempo de inicio CUANDO COMIENZA EL TTS (después del piano)
+      const startTime = Date.now();
+      setAudioStartTime(startTime);
+      console.log('⏰ Inicio de timeline (TTS) - Timestamp:', startTime);
+      
       console.log('🎵 Reproduciendo TTS...');
       try {
         await playPreloadedAudio('TTS');
+        console.log('✅ TTS terminado de reproducirse');
       } catch (error) {
         console.log('⚠️ Fallback a playAudioFromUrl para TTS');
         await playAudioFromUrl(ttsUrl, 'TTS');
+        console.log('✅ TTS terminado de reproducirse (desde URL)');
       }
+      
+      // Detener el tracking del timeline cuando termine el TTS
+      if (timelineCheckIntervalRef.current) {
+        console.log('⏹️ TTS terminado, deteniendo tracking de timeline');
+        clearInterval(timelineCheckIntervalRef.current);
+        timelineCheckIntervalRef.current = null;
+      }
+      
+      // Resetear audioStartTime para evitar que el tracking continúe
+      // Esto también detendrá el intervalo automáticamente por el useEffect
+      setAudioStartTime(null);
+      
+      // Limpiar imagen de tecla cuando termina todo
+      setCurrentKeyImage(null);
+      
+      // NO llamar a stopAudio() aquí porque descarga los audios precargados
+      // Los audios ya terminaron naturalmente (se detuvieron en playPreloadedAudio)
+      // stopAudio() se llamará cuando el usuario navegue fuera o presione un botón
       
       console.log('✅ Audios reproducidos correctamente');
     } catch (error) {
@@ -142,15 +163,23 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       lastTimestampRef.current = playTimestamp;
       hasPlayedRef.current = false;
       
+      // Detener cualquier reproducción anterior antes de iniciar nueva
+      if (isReproducingRef.current) {
+        console.log('🛑 Deteniendo reproducción anterior antes de iniciar nueva');
+        stopAudioRef.current().catch(() => {});
+      }
+      
       const timeoutId = setTimeout(() => {
-        if (isMountedRef.current && !isNavigatingAwayRef.current) {
+        if (isMountedRef.current && !isNavigatingAwayRef.current && !hasPlayedRef.current) {
           reproduceAudios();
         }
       }, 100);
       
-      return () => clearTimeout(timeoutId);
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
-  }, [playAudio, playTimestamp, reproduceAudios]);
+  }, [playAudio, playTimestamp]); // Removido reproduceAudios de dependencias para evitar loops
 
   // ✅ Obtener timeline del compás actual
   const fetchTimeline = useCallback(async () => {
@@ -162,7 +191,14 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     try {
       console.log('📡 Obteniendo timeline para compás:', currentCompas);
       const timelineData = await getTimeline(score.id, currentCompas);
-      console.log('✅ Timeline obtenido:', JSON.stringify(timelineData, null, 2));
+      
+      // Log resumido del timeline
+      const eventCount = timelineData?.timeline?.length || 0;
+      const maxTimestamp = timelineData?.timeline?.length > 0 
+        ? Math.max(...timelineData.timeline.map(e => e.timestamp_ms))
+        : 0;
+      console.log(`✅ Timeline obtenido - Eventos: ${eventCount} | Duración: ${Math.round(maxTimestamp / 1000)}s`);
+      
       setTimeline(timelineData);
     } catch (error) {
       console.error('❌ Error obteniendo timeline:', error);
@@ -176,6 +212,16 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     }
   }, [score?.id, currentCompas, fetchTimeline]);
 
+  // ✅ Limpiar estado cuando cambia el compás o el timeline
+  useEffect(() => {
+    // Resetear eventos procesados y estado visual cuando cambia el timeline
+    console.log('🔄 Timeline cambiado, limpiando estado de eventos procesados');
+    processedEventsRef.current.clear();
+    setCurrentKeyImage(null);
+    setAudioStartTime(null);
+    hasPlayedRef.current = false;
+  }, [timeline, currentCompas]);
+
   // ✅ FUNCIÓN PRINCIPAL: Verificar eventos del timeline y mostrar teclas
   const checkTimelineEvents = useCallback(() => {
     if (!timeline?.timeline || !audioStartTime) {
@@ -183,6 +229,20 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     }
 
     const elapsedTimeMs = Date.now() - audioStartTime;
+    
+    // Obtener el último timestamp del timeline para saber cuándo detener
+    const maxTimestamp = Math.max(...timeline.timeline.map(e => e.timestamp_ms), 0);
+    const bufferMs = 1000; // Buffer de 1 segundo después del último evento
+    
+    // Si ya pasó la duración del timeline, detener el tracking
+    if (elapsedTimeMs > maxTimestamp + bufferMs) {
+      if (timelineCheckIntervalRef.current) {
+        console.log('⏹️ Timeline completado, deteniendo tracking');
+        clearInterval(timelineCheckIntervalRef.current);
+        timelineCheckIntervalRef.current = null;
+      }
+      return;
+    }
     
     // Buscar eventos cercanos al tiempo actual (ventana de ±200ms)
     const currentEvents = timeline.timeline.filter(event => {
@@ -218,14 +278,30 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         diferencia: Math.abs(event.timestamp_ms - elapsedTimeMs)
       });
 
-      if (note && mano && /[A-G]/.test(note) && (mano === 'MD' || mano === 'MI')) {
-        const keyImage = getKeyImageForNote(note, mano);
-        
-        if (keyImage) {
-          console.log(`✅ Mostrando tecla ${mano}: ${note}`);
-          setCurrentKeyImage(keyImage);
-        } else {
-          console.warn(`⚠️ No hay imagen para ${mano}_${note}`);
+      if (note && mano && (mano === 'MD' || mano === 'MI')) {
+        // Validar que la nota sea válida (puede incluir # o b)
+        const validNotePattern = /^[A-G](#|b|)?$/;
+        if (!validNotePattern.test(note)) {
+          console.warn(`⚠️ Nota inválida: ${note}`);
+          return;
+        }
+
+        try {
+          const keyImage = getKeyImageForNote(note, mano);
+          
+          if (keyImage) {
+            console.log(`✅ Mostrando tecla ${mano}: ${note}`);
+            // Validar que la imagen sea válida antes de establecerla
+            if (typeof keyImage === 'number' || (keyImage && keyImage.uri)) {
+              setCurrentKeyImage(keyImage);
+            } else {
+              console.warn(`⚠️ Imagen inválida para ${mano}_${note}:`, keyImage);
+            }
+          } else {
+            console.warn(`⚠️ No hay imagen mapeada para ${mano}_${note}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error obteniendo imagen para ${mano}_${note}:`, error.message || error);
         }
       }
     }

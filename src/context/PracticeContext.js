@@ -57,7 +57,15 @@ export const PracticeProvider = ({ children }) => {
       };
       
       await AsyncStorage.setItem(progressKey, JSON.stringify(progressData));
-      console.log(`Progreso guardado para partitura ${partituraId}:`, progressData);
+      // Log resumido sin URLs largas
+      const summary = {
+        partituraId,
+        currentCompas: progressData.currentCompas,
+        lastUpdated: progressData.lastUpdated,
+        hasPractice: !!practice,
+        hasAudioUrls: !!(practice?.audio_piano && practice?.audio_tts)
+      };
+      console.log(`✅ Progreso guardado - Partitura: ${partituraId.substring(0, 8)}... | Compás: ${progressData.currentCompas}`);
     } catch (err) {
       console.error('Error guardando progreso:', err);
     }
@@ -71,7 +79,8 @@ export const PracticeProvider = ({ children }) => {
       
       if (savedProgress) {
         const progressData = JSON.parse(savedProgress);
-        console.log(`Progreso cargado para partitura ${partituraId}:`, progressData);
+        // Log resumido sin URLs largas
+        console.log(`📂 Progreso cargado - Partitura: ${partituraId.substring(0, 8)}... | Compás: ${progressData.currentCompas || 'N/A'}`);
         return progressData;
       }
       
