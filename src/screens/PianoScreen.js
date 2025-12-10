@@ -184,13 +184,13 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
 
     const elapsedTimeMs = Date.now() - audioStartTime;
     
-    // Buscar eventos cercanos al tiempo actual (ventana de ±100ms)
+    // Buscar eventos cercanos al tiempo actual (ventana de ±200ms)
     const currentEvents = timeline.timeline.filter(event => {
       const eventKey = `${event.timestamp_ms}_${event.pitch}_${event.mano}`;
       const timeDiff = Math.abs(event.timestamp_ms - elapsedTimeMs);
       
       // Solo procesar eventos dentro de la ventana de tiempo y no procesados previamente
-      return timeDiff < 100 && !processedEventsRef.current.has(eventKey);
+      return timeDiff < 200 && !processedEventsRef.current.has(eventKey);
     });
 
     if (currentEvents.length > 0) {

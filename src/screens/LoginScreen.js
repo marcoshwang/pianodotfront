@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { login } from '../../services/pianodotApi';
-import { saveAuthData } from '../../utils/mockAuth';
+import { saveAuthData } from '../../auth/cognitoAuth';
 
 const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings, loadSettings }) => {
   const [email, setEmail] = useState('');

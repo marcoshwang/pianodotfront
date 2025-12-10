@@ -28,7 +28,6 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
   // Sincronizar automáticamente cada vez que el usuario entre a la pantalla
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔄 Pantalla enfocada - sincronizando con backend...');
       loadSavedScores();
     }, [])
   );
@@ -42,37 +41,27 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
       }
       setError(null);
       
-      console.log('🔄 Sincronizando con el backend...');
-      console.log('URL base configurada:', getBaseURL());
-      
-      // Obtener partituras directamente del backend
       const backendScores = await getPartituras();
-      console.log('✅ Partituras obtenidas del backend:', backendScores);
       
       // Actualizar estado con las partituras del backend
       setSavedScores(backendScores);
       
       // También actualizar AsyncStorage como respaldo
       await AsyncStorage.setItem('savedScores', JSON.stringify(backendScores));
-      console.log('💾 Partituras guardadas en AsyncStorage como respaldo');
       
     } catch (error) {
-      console.error('❌ Error al sincronizar con el backend:', error);
+      console.error('Error al sincronizar con el backend:', error);
       setError(error.message);
       
       // Si falla el backend, cargar desde AsyncStorage como respaldo
       try {
-        console.log('🔄 Cargando desde respaldo local...');
         const savedScoresString = await AsyncStorage.getItem('savedScores');
         if (savedScoresString) {
           const scores = JSON.parse(savedScoresString);
           setSavedScores(scores);
-          console.log('✅ Partituras cargadas desde respaldo local:', scores.length);
-        } else {
-          console.log('⚠️ No hay partituras en respaldo local');
         }
       } catch (localError) {
-        console.error('❌ Error cargando partituras locales:', localError);
+        console.error('Error cargando partituras locales:', localError);
       }
     } finally {
       setLoading(false);
@@ -96,33 +85,23 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
     const score = savedScores[scoreIndex];
     
     try {
-      console.log('🗑️ Iniciando eliminación de partitura:', score.name);
-      console.log('🗑️ Score data:', score);
-      console.log('🗑️ Score ID:', score.id);
-      
       // Si tiene ID del backend, eliminar del backend
       if (score.id) {
-        console.log('🗑️ Eliminando del backend con ID:', score.id);
         try {
           await deletePartitura(score.id);
-          console.log('✅ Partitura eliminada del backend exitosamente');
         } catch (backendError) {
-          console.error('❌ Error eliminando del backend:', backendError);
+          console.error('Error eliminando del backend:', backendError);
           throw new Error(`Error eliminando del backend: ${backendError.message}`);
         }
-      } else {
-        console.log('⚠️ La partitura no tiene ID del backend, solo se eliminará localmente');
       }
       
       // Recargar partituras desde el backend para sincronizar
-      console.log('🔄 Sincronizando después de eliminar...');
       await loadSavedScores();
       
-      console.log('✅ Partitura eliminada y sincronizada correctamente');
     } catch (error) {
-      console.error('❌ Error al eliminar partitura:', error);
-      console.error('❌ Error type:', error.constructor.name);
-      console.error('❌ Error message:', error.message);
+      console.error('Error al eliminar partitura:', error);
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
       Alert.alert('Error', `No se pudo eliminar la partitura: ${error.message}`);
     }
   };

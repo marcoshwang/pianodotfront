@@ -19,7 +19,7 @@ export const useAudioPlayer = () => {
         shouldDuckAndroid: true,
       });
     } catch (error) {
-      console.error('❌ Error configurando modo de audio:', error);
+      console.error('Error configurando modo de audio:', error);
       // Continuar sin configuración si falla
     }
   }, []);
@@ -27,7 +27,7 @@ export const useAudioPlayer = () => {
   // Precargar audio
   const preloadAudio = useCallback(async (audioUrl, type = 'audio') => {
     try {
-      console.log(`🎵 Precargando audio ${type} desde URL: ${audioUrl}`);
+      console.log(`Precargando audio ${type} desde URL: ${audioUrl}`);
       
       // Configurar modo de audio
       await configureAudioMode();
@@ -52,15 +52,14 @@ export const useAudioPlayer = () => {
         [type]: newSound
       }));
 
-      console.log(`✅ Audio ${type} precargado correctamente`);
       return newSound;
     } catch (err) {
-      console.error(`❌ Error precargando audio ${type}:`, err);
+      console.error(`Error precargando audio ${type}:`, err);
       throw err;
     }
   }, [configureAudioMode]);
 
-  // ✅ SOLUCION: Reproducir audio precargado usando callback en lugar de polling
+  //Reproducir audio precargado usando callback en lugar de polling
   const playPreloadedAudio = useCallback(async (type = 'audio') => {
     try {
       const preloadedSound = preloadedSounds[type];
@@ -68,19 +67,18 @@ export const useAudioPlayer = () => {
         throw new Error(`Audio ${type} no está precargado`);
       }
 
-      console.log(`🎵 Reproduciendo audio precargado ${type}...`);
       setIsPlaying(true);
       setError(null);
 
       // Verificar estado antes de reproducir
       const statusBefore = await preloadedSound.getStatusAsync();
-      console.log(`🔍 Estado antes de reproducir ${type}:`, {
+      console.log(`Estado antes de reproducir ${type}:`, {
         isLoaded: statusBefore.isLoaded,
         isPlaying: statusBefore.isPlaying,
         durationMillis: statusBefore.durationMillis
       });
 
-      // ✅ CLAVE: Configurar el callback ANTES de reproducir
+      //Configurar el callback ANTES de reproducir
       return new Promise((resolve, reject) => {
         let hasFinished = false;
         let timeoutId = null;
@@ -92,19 +90,19 @@ export const useAudioPlayer = () => {
           if (status.isLoaded) {
             // Log solo ocasionalmente para reducir spam (cada ~2 segundos)
             if (status.positionMillis % 2000 < 500) {
-              console.log(`🔍 Reproduciendo ${type}:`, {
+              console.log(`Reproduciendo ${type}:`, {
                 position: Math.round(status.positionMillis / 1000),
                 duration: Math.round(status.durationMillis / 1000),
                 isPlaying: status.isPlaying
               });
             }
 
-            // ✅ Verificar si terminó
+            // Verificar si terminó
             if (status.didJustFinish) {
               hasFinished = true;
               if (timeoutId) clearTimeout(timeoutId);
               
-              console.log(`✅ Audio ${type} terminado correctamente`);
+              console.log(`Audio ${type} terminado correctamente`);
               setIsPlaying(false);
               
               // Limpiar el callback
@@ -115,7 +113,7 @@ export const useAudioPlayer = () => {
             hasFinished = true;
             if (timeoutId) clearTimeout(timeoutId);
             
-            console.error(`❌ Error en reproducción ${type}:`, status.error);
+            console.error(`Error en reproducción ${type}:`, status.error);
             setIsPlaying(false);
             
             // Limpiar el callback
@@ -124,11 +122,11 @@ export const useAudioPlayer = () => {
           }
         });
 
-        // ✅ Timeout de seguridad aumentado a 2 minutos (120 segundos)
+        //Timeout de seguridad aumentado a 2 minutos (120 segundos)
         timeoutId = setTimeout(() => {
           if (!hasFinished) {
             hasFinished = true;
-            console.log(`⏰ Timeout para audio ${type} después de 120s, asumiendo que terminó`);
+            console.log(`Timeout para audio ${type} después de 120s, asumiendo que terminó`);
             setIsPlaying(false);
             
             // Limpiar el callback
@@ -144,19 +142,19 @@ export const useAudioPlayer = () => {
           
           // Verificar que realmente esté reproduciéndose
           const playStatus = await preloadedSound.getStatusAsync();
-          console.log(`🔍 Estado después de playAsync ${type}:`, {
+          console.log(`Estado después de playAsync ${type}:`, {
             isLoaded: playStatus.isLoaded,
             isPlaying: playStatus.isPlaying,
             durationMillis: playStatus.durationMillis
           });
           
-          console.log(`✅ Audio ${type} reproduciéndose...`);
+          console.log(`Audio ${type} reproduciéndose...`);
         }).catch((err) => {
           if (!hasFinished) {
             hasFinished = true;
             if (timeoutId) clearTimeout(timeoutId);
             
-            console.error(`❌ Error iniciando reproducción ${type}:`, err);
+            console.error(`Error iniciando reproducción ${type}:`, err);
             setIsPlaying(false);
             
             // Limpiar el callback
@@ -167,7 +165,7 @@ export const useAudioPlayer = () => {
       });
 
     } catch (err) {
-      console.error('❌ Error reproduciendo audio precargado:', err);
+      console.error('Error reproduciendo audio precargado:', err);
       setError(err.message);
       setIsPlaying(false);
       throw err;
@@ -177,7 +175,7 @@ export const useAudioPlayer = () => {
   // Reproducir audio desde URL (método original como fallback)
   const playAudioFromUrl = useCallback(async (audioUrl, type = 'audio') => {
     try {
-      console.log(`🎵 Reproduciendo audio ${type} desde URL: ${audioUrl}`);
+      console.log(`Reproduciendo audio ${type} desde URL: ${audioUrl}`);
       
       // Detener audio anterior si existe
       if (soundRef.current) {
@@ -185,7 +183,7 @@ export const useAudioPlayer = () => {
           await soundRef.current.stopAsync();
           await soundRef.current.unloadAsync();
         } catch (err) {
-          console.log('⚠️ Error deteniendo audio anterior:', err);
+          console.log('Error deteniendo audio anterior:', err);
         }
       }
 
@@ -211,7 +209,7 @@ export const useAudioPlayer = () => {
 
       setSound(newSound);
       soundRef.current = newSound;
-      console.log(`✅ Audio ${type} reproduciéndose...`);
+      console.log(`Audio ${type} reproduciéndose...`);
 
       // Esperar a que termine la reproducción usando setOnPlaybackStatusUpdate
       return new Promise((resolve, reject) => {
@@ -226,7 +224,7 @@ export const useAudioPlayer = () => {
               hasFinished = true;
               if (timeoutId) clearTimeout(timeoutId);
               
-              console.log(`✅ Audio ${type} terminado correctamente`);
+              console.log(`Audio ${type} terminado correctamente`);
               setIsPlaying(false);
               
               newSound.setOnPlaybackStatusUpdate(null);
@@ -236,7 +234,7 @@ export const useAudioPlayer = () => {
             hasFinished = true;
             if (timeoutId) clearTimeout(timeoutId);
             
-            console.error(`❌ Error en reproducción ${type}:`, status.error);
+            console.error(`Error en reproducción ${type}:`, status.error);
             setIsPlaying(false);
             
             newSound.setOnPlaybackStatusUpdate(null);
@@ -248,7 +246,7 @@ export const useAudioPlayer = () => {
         timeoutId = setTimeout(() => {
           if (!hasFinished) {
             hasFinished = true;
-            console.log(`⏰ Timeout para audio ${type} después de 120s`);
+            console.log(`Timeout para audio ${type} después de 120s`);
             setIsPlaying(false);
             
             newSound.setOnPlaybackStatusUpdate(null);
@@ -258,17 +256,17 @@ export const useAudioPlayer = () => {
       });
 
     } catch (err) {
-      console.error('❌ Error reproduciendo audio:', err);
+      console.error('Error reproduciendo audio:', err);
       setError(err.message);
       setIsPlaying(false);
       throw err;
     }
   }, [configureAudioMode]);
 
-  // ✅ MEJORADO: Detener audio de forma más robusta
+  //Detener audio de forma más robusta
   const stopAudio = useCallback(async () => {
     try {
-      console.log('🛑 Deteniendo audio...');
+      console.log('Deteniendo audio...');
       
       // 1. Detener audio principal si existe
       if (soundRef.current) {
@@ -278,7 +276,7 @@ export const useAudioPlayer = () => {
           await soundRef.current.stopAsync();
           await soundRef.current.unloadAsync();
         } catch (err) {
-          console.log('⚠️ Error deteniendo audio principal:', err);
+          console.log('Error deteniendo audio principal:', err);
         }
         soundRef.current = null;
         setSound(null);
@@ -292,7 +290,7 @@ export const useAudioPlayer = () => {
             await sound.stopAsync();
             await sound.unloadAsync();
           } catch (err) {
-            console.log(`⚠️ Error deteniendo audio precargado ${type}:`, err);
+            console.log(`Error deteniendo audio precargado ${type}:`, err);
           }
         }
       }
@@ -301,16 +299,16 @@ export const useAudioPlayer = () => {
       setIsPlaying(false);
       setError(null);
       
-      console.log('✅ Audio detenido completamente');
+      console.log('Audio detenido completamente');
     } catch (error) {
-      console.error('❌ Error deteniendo audio:', error);
+      console.error('Error deteniendo audio:', error);
     }
   }, [preloadedSounds]);
 
   // Limpiar audios precargados
   const clearPreloadedSounds = useCallback(async () => {
     try {
-      console.log('🧹 Limpiando audios precargados...');
+      console.log('Limpiando audios precargados...');
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
           try {
@@ -318,14 +316,14 @@ export const useAudioPlayer = () => {
             sound.setOnPlaybackStatusUpdate(null);
             await sound.unloadAsync();
           } catch (err) {
-            console.log(`⚠️ Error limpiando audio ${type}:`, err);
+            console.log(`Error limpiando audio ${type}:`, err);
           }
         }
       }
       setPreloadedSounds({});
-      console.log('✅ Audios precargados limpiados');
+      console.log('Audios precargados limpiados');
     } catch (error) {
-      console.error('❌ Error limpiando audios precargados:', error);
+      console.error('Error limpiando audios precargados:', error);
     }
   }, [preloadedSounds]);
 
@@ -336,11 +334,11 @@ export const useAudioPlayer = () => {
       if (soundRef.current) {
         soundRef.current.setOnPlaybackStatusUpdate(null);
         soundRef.current.unloadAsync().catch(err => {
-          console.log('⚠️ Error limpiando audio al desmontar:', err);
+          console.log('Error limpiando audio al desmontar:', err);
         });
       }
     };
-  }, []); // ✅ Array vacío - solo se ejecuta al montar/desmontar
+  }, []); // Array vacío - solo se ejecuta al montar/desmontar
 
   return {
     playAudioFromUrl,

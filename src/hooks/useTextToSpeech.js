@@ -70,28 +70,28 @@ export const useTextToSpeech = () => {
         rate: 0.5, // Aún más lento para asegurar prioridad
         volume: INTRO_VOLUME, // Volumen específico para audio introductorio
         onStart: () => {
-          console.log('🎤 Audio introductorio INICIADO');
+          console.log('Audio introductorio INICIADO');
           setIsSpeaking(true);
         },
         onDone: () => {
-          console.log('✅ Audio introductorio COMPLETADO');
+          console.log('Audio introductorio COMPLETADO');
           setIsSpeaking(false);
         },
         onStopped: () => {
-          console.log('⏹️ Audio introductorio DETENIDO');
+          console.log('Audio introductorio DETENIDO');
           setIsSpeaking(false);
         },
         onError: (error) => {
-          console.log('❌ Error en audio introductorio:', error);
+          console.log('Error en audio introductorio:', error);
           setIsSpeaking(false);
         },
       };
 
-      console.log('🔊 Reproduciendo:', text.substring(0, 50) + '...');
+      console.log('Reproduciendo:', text.substring(0, 50) + '...');
       
       // Asegurar que el volumen introductorio siempre tenga prioridad
       const finalIntroOptions = { ...introOptions, ...options, volume: INTRO_VOLUME };
-      console.log('🔊 Volumen introductorio aplicado:', finalIntroOptions.volume, '(ligeramente más alto para prioridad)');
+      console.log('Volumen introductorio aplicado:', finalIntroOptions.volume, '(ligeramente más alto para prioridad)');
       
       // Reproducir una sola vez
       Speech.speak(text, finalIntroOptions);

@@ -49,16 +49,15 @@ const WelcomeLandingScreen = ({ navigation, styles, triggerVibration, stop, spea
         </Text>
       </View>
 
-      {/* Botón de empezar */}
-      <View style={styles.landingButtonContainer}>
+      <View style={styles.newButtonContainer}>
         <TouchableOpacity 
-          style={styles.landingButton}
+          style={styles.newButton}
           onPress={handleStart}
           accessibilityLabel="Empezar"
           accessibilityRole="button"
           accessibilityHint="Comenzar a usar la aplicación PianoDot"
         >
-          <Text style={styles.landingButtonText}>EMPEZAR</Text>
+          <Text style={styles.newButtonText}>EMPEZAR</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

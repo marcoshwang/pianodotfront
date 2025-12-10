@@ -34,19 +34,14 @@ const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }
     try {
       triggerVibration();
       setIsLoading(true);
-      
-      console.log('📝 Intentando registro con Cognito...');
       const name = `${nombre} ${apellido}`.trim();
       const result = await register(email, password, name);
-      
-      console.log('✅ Registro exitoso');
-      console.log('📧 Mensaje:', result.message || 'Usuario registrado. Verifica tu email para confirmar la cuenta.');
       
       // Navegar directamente a Login sin popup
       stop();
       navigation.replace('Login');
     } catch (error) {
-      console.error('❌ Error en registro:', error);
+      console.error('Error en registro:', error);
       Alert.alert(
         'Error de registro',
         error.message || 'No se pudo registrar el usuario. Intenta nuevamente.'

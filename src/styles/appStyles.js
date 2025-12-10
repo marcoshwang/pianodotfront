@@ -730,6 +730,41 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       lineHeight: sizeConfig.buttonText * 2.5,
     },
     
+    // Estilos para nuevo botón independiente en WelcomeLandingScreen
+    newButtonContainer: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      paddingTop: 10,
+    },
+    
+    newButton: {
+      backgroundColor: '#000000',
+      borderRadius: sizeConfig.buttonPadding * 0.9,
+      paddingVertical: sizeConfig.buttonPadding * 8,
+      paddingHorizontal: sizeConfig.buttonPadding * 2.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: '#333333',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+      elevation: 8,
+    },
+    
+    newButtonText: {
+      color: '#FFFFFF',
+      fontSize: sizeConfig.buttonText * 1.2,
+      fontFamily: 'Fredoka_600SemiBold',
+      textAlign: 'center',
+      letterSpacing: sizeConfig.buttonText * 0.05,
+      lineHeight: sizeConfig.buttonText * 1.2 * 1.3,
+    },
+    
     // Estilos para pantalla de autenticación
     authContent: {
       flex: 1,

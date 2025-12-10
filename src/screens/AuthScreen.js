@@ -15,11 +15,9 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
   const [oauthInitiated, setOauthInitiated] = useState(false);
 
   // Limpiar loading state cuando el componente se vuelve a montar
-  // (esto sucede cuando el usuario vuelve de OAuth fallido o cancelado)
   useEffect(() => {
     // Si OAuth fue iniciado pero volvimos a esta pantalla, significa que falló o se canceló
     if (oauthInitiated) {
-      console.log('⚠️ Usuario regresó a AuthScreen después de iniciar OAuth');
       setIsLoadingGoogle(false);
       setOauthInitiated(false);
     }
@@ -28,7 +26,6 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
   const handleEmailAuth = () => {
     // No iniciar si ya hay un proceso OAuth en curso
     if (isLoadingGoogle) {
-      console.log('⚠️ OAuth en proceso, email auth bloqueado');
       return;
     }
     
@@ -40,7 +37,6 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
   const handleGoogleAuth = async () => {
     // Evitar doble tap
     if (isLoadingGoogle) {
-      console.log('⚠️ OAuth ya en proceso, ignorando tap');
       return;
     }
     
@@ -49,7 +45,6 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
       setIsLoadingGoogle(true);
       setOauthInitiated(true);
       
-      console.log('🔐 Iniciando autenticación con Google...');
       
       // Iniciar el flujo de autenticación con Google
       await loginWithGoogle();
@@ -59,18 +54,14 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
       // 1. El deep link handler complete exitosamente (navega a Home)
       // 2. Haya un error y el usuario vuelva a esta pantalla
       // 3. El usuario cancele en el navegador y vuelva
-      
-      console.log('✅ Redirección OAuth iniciada');
-      
       // Timeout de seguridad: si después de 60 segundos seguimos en esta pantalla,
       // resetear el loading state (el usuario probablemente canceló)
       setTimeout(() => {
         setIsLoadingGoogle(false);
-        console.log('⏱️ Timeout de loading alcanzado (60s)');
       }, 60000);
       
     } catch (error) {
-      console.error('❌ Error en autenticación con Google:', error);
+      console.error('Error en autenticación con Google:', error);
       
       // Resetear estados
       setIsLoadingGoogle(false);

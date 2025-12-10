@@ -48,7 +48,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
   const saveSettingToBackend = async (field, value) => {
     try {
       // Verificar autenticación
-      const { getAuthToken } = await import('../../utils/mockAuth');
+      const { getAuthToken } = await import('../../auth/cognitoAuth');
       const token = await getAuthToken();
 
       if (!token) {
@@ -58,12 +58,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
       // Construir el payload mapeando valores del frontend al backend
       const payload = mapFrontendToBackend(field, value);
 
-      console.log('💾 Guardando configuración:', payload);
-      console.log('📤 Haciendo PATCH a /users/me/config con payload:', JSON.stringify(payload, null, 2));
-
-      // Usar la función centralizada de pianodotApi
       await saveUserConfig(payload);
-      console.log('✅ Configuración guardada exitosamente en el backend (PATCH /users/me/config)');
 
       // Remover de pendientes
       setPendingSaves(prev => {
@@ -151,41 +146,31 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
           onPress: async () => {
             try {
               triggerVibration();
-              console.log('🚪 Iniciando cierre de sesión...');
               
               // 1. Resetear configuraciones localmente (SIN sincronizar con backend)
               if (resetSettings) {
-                console.log('🔄 Reseteando configuraciones localmente (sin PATCH)...');
                 await resetSettings(true); // true = skipBackendSync
-                console.log('✅ Configuraciones reseteadas localmente');
               }
               
               // 2. Cerrar sesión de Cognito
               try {
                 const { signOut } = await import('aws-amplify/auth');
-                console.log('🔐 Cerrando sesión de Cognito...');
                 await signOut();
-                console.log('✅ Sesión de Cognito cerrada');
               } catch (cognitoError) {
-                console.warn('⚠️ Error cerrando sesión de Cognito:', cognitoError.message);
               }
               
               // 3. Limpiar todos los datos de autenticación
-              const { clearAllAuthData } = await import('../../utils/mockAuth');
-              console.log('🗑️ Limpiando datos de autenticación...');
+              const { clearAllAuthData } = await import('../../auth/cognitoAuth');
               await clearAllAuthData();
-              console.log('✅ Datos de autenticación limpiados');
               
               // 4. Navegar a Welcome (reset completo del stack de navegación)
-              console.log('🏠 Navegando a Welcome...');
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Welcome' }],
               });
               
-              console.log('✅ Cierre de sesión completado');
             } catch (error) {
-              console.error('❌ Error al cerrar sesión:', error);
+              console.error('Error al cerrar sesión:', error);
               Alert.alert(
                 'Error',
                 'Hubo un problema al cerrar sesión. Por favor, intenta nuevamente.'

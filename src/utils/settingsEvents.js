@@ -12,7 +12,6 @@ class SettingsEventEmitter {
   }
   
   emit() {
-    console.log('📢 Emitiendo evento de recarga de settings');
     this.listeners.forEach(callback => callback());
   }
 }

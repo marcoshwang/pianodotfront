@@ -1,6 +1,6 @@
 // Servicio API centralizado para PianoDot usando fetch
 import { getBaseURL, getAuthHeaders } from '../config/api.config';
-import { getAuthToken, getAuthTokenSync, getAccessToken } from '../utils/mockAuth';
+import { getAuthToken, getAuthTokenSync, getAccessToken } from '../auth/cognitoAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = getBaseURL();

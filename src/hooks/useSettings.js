@@ -16,16 +16,13 @@ export const useSettings = () => {
   const isSaving = useRef(false);
   const lastSavedSettings = useRef(null);
 
-  // ✅ Escuchar eventos de recarga (por ejemplo, después de login con OAuth)
+  //Escuchar eventos de recarga (por ejemplo, después de login con OAuth)
   useEffect(() => {
-    console.log('👂 Suscribiéndose a eventos de recarga de settings');
     const unsubscribe = settingsEvents.subscribe(() => {
-      console.log('🔔 Evento recibido: recargando settings desde AsyncStorage...');
       loadSettings();
     });
     
     return () => {
-      console.log('👋 Desuscribiéndose de eventos de settings');
       unsubscribe();
     };
   }, []);
@@ -45,7 +42,6 @@ export const useSettings = () => {
     // Solo guardar si las settings realmente cambiaron
     const settingsString = JSON.stringify(settings);
     if (lastSavedSettings.current === settingsString) {
-      console.log('⏸️ Settings no cambiaron, saltando guardado');
       return;
     }
 
@@ -90,7 +86,7 @@ export const useSettings = () => {
   // Verificar si el usuario está autenticado
   const isAuthenticated = async () => {
     try {
-      const { getAuthToken } = await import('../../utils/mockAuth');
+      const { getAuthToken } = await import('../../auth/cognitoAuth');
       const token = await getAuthToken();
       return !!token;
     } catch (error) {
@@ -101,57 +97,45 @@ export const useSettings = () => {
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 Cargando configuraciones...');
       
       // Verificar autenticación
       const authenticated = await isAuthenticated();
-      console.log('🔐 Usuario autenticado:', authenticated);
       
       let loadedSettings = null;
       
       if (authenticated) {
         // Intentar cargar desde el backend
         try {
-          console.log('📥 Intentando cargar configuración desde backend (GET /users/me/config)...');
           const backendConfig = await getUserConfig();
           
           if (backendConfig) {
-            loadedSettings = mapBackendToFrontend(backendConfig);
-            console.log('✅ Configuración cargada desde backend (GET /users/me/config):', loadedSettings);
+            loadedSettings = mapBackendToFrontend(backendConfig);;
             
             // Guardar en AsyncStorage como backup
             await AsyncStorage.setItem('pianoSettings', JSON.stringify(loadedSettings));
-            console.log('✅ Configuración guardada en AsyncStorage como backup');
           }
         } catch (backendError) {
-          console.warn('⚠️ No se pudo cargar desde backend (GET /users/me/config):', backendError.message);
           // Continuar con fallback a AsyncStorage
         }
       }
       
       // Si no hay settings del backend, intentar cargar desde AsyncStorage
       if (!loadedSettings) {
-        console.log('📥 Intentando cargar desde AsyncStorage...');
         const savedSettings = await AsyncStorage.getItem('pianoSettings');
         
         if (savedSettings) {
           loadedSettings = JSON.parse(savedSettings);
-          console.log('✅ Configuración cargada desde AsyncStorage:', loadedSettings);
-        } else {
-          console.log('ℹ️ No hay configuración guardada, usando valores por defecto');
         }
       }
       
       // Actualizar estado si hay settings cargadas
       if (loadedSettings) {
-        console.log('🔄 Aplicando configuración cargada al estado:', loadedSettings);
         setSettings(loadedSettings);
         lastSavedSettings.current = JSON.stringify(loadedSettings);
-        console.log('✅ Estado actualizado, debería causar re-render');
       }
       
     } catch (error) {
-      console.error('❌ Error cargando configuración:', error);
+      console.error('Error cargando configuración:', error);
     } finally {
       setIsLoading(false);
     }
@@ -160,18 +144,14 @@ export const useSettings = () => {
   const saveSettings = async () => {
     // Prevenir guardados simultáneos
     if (isSaving.current) {
-      console.log('⏸️ Ya hay un guardado en progreso, saltando...');
       return;
     }
 
     try {
       isSaving.current = true;
-      console.log('💾 Guardando configuraciones:', settings);
       
       // Guardar en AsyncStorage primero (más rápido)
-      await AsyncStorage.setItem('pianoSettings', JSON.stringify(settings));
-      console.log('✅ Guardado en AsyncStorage');
-      
+      await AsyncStorage.setItem('pianoSettings', JSON.stringify(settings));     
       // Verificar autenticación
       const authenticated = await isAuthenticated();
       
@@ -179,30 +159,26 @@ export const useSettings = () => {
         // Guardar en backend
         try {
           const backendConfig = mapFrontendToBackend(settings);
-          console.log('📤 Guardando en backend:', backendConfig);
           
           await saveUserConfig(backendConfig);
-          console.log('✅ Guardado en backend exitoso');
           
           // Actualizar referencia de última configuración guardada
           lastSavedSettings.current = JSON.stringify(settings);
         } catch (backendError) {
-          console.error('❌ Error guardando en backend:', backendError.message);
+          console.error('Error guardando en backend:', backendError.message);
           // No lanzar error - ya guardamos localmente
         }
       } else {
-        console.log('ℹ️ Usuario no autenticado, guardado solo local');
         lastSavedSettings.current = JSON.stringify(settings);
       }
     } catch (error) {
-      console.error('❌ Error guardando configuración:', error);
+      console.error('Error guardando configuración:', error);
     } finally {
       isSaving.current = false;
     }
   };
 
   const updateSetting = (key, value) => {
-    console.log(`🔧 Actualizando setting: ${key} = ${value}`);
     setSettings(prev => ({
       ...prev,
       [key]: value
@@ -211,7 +187,6 @@ export const useSettings = () => {
 
   const resetSettings = async (skipBackendSync = false) => {
     try {
-      console.log('🔄 Reseteando configuraciones...');
       
       const defaultSettings = {
         fontSize: 'normal',
@@ -225,7 +200,6 @@ export const useSettings = () => {
       
       // Limpiar AsyncStorage
       await AsyncStorage.removeItem('pianoSettings');
-      console.log('✅ AsyncStorage limpiado');
       
       // Si está autenticado y NO se debe saltar la sincronización, resetear en backend
       if (!skipBackendSync) {
@@ -234,18 +208,13 @@ export const useSettings = () => {
           try {
             const backendConfig = mapFrontendToBackend(defaultSettings);
             await saveUserConfig(backendConfig);
-            console.log('✅ Configuración reseteada en backend');
           } catch (error) {
-            console.warn('⚠️ No se pudo resetear en backend:', error.message);
           }
         }
-      } else {
-        console.log('ℹ️ Sincronización con backend omitida (skipBackendSync=true)');
       }
       
-      console.log('✅ Configuraciones reseteadas');
     } catch (error) {
-      console.error('❌ Error reseteando configuraciones:', error);
+      console.error('Error reseteando configuraciones:', error);
     }
   };
 

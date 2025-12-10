@@ -4,14 +4,11 @@ import 'react-native-get-random-values';
 try {
   require('@aws-amplify/react-native');
 } catch (error) {
-  console.warn('⚠️ @aws-amplify/react-native no está vinculado. Necesitas hacer un nuevo build.');
 }
 
 try {
   require('@aws-amplify/rtn-web-browser');
-  console.log('✅ @aws-amplify/rtn-web-browser cargado');
 } catch (error) {
-  console.warn('⚠️ @aws-amplify/rtn-web-browser no está vinculado. Necesitas hacer un nuevo build para OAuth.');
 }
 
 import React, { useState, useMemo } from 'react';
@@ -76,14 +73,8 @@ const configureAmplify = () => {
       ssr: false,
     });
     
-    console.log('✅ Amplify configurado correctamente con Cognito');
-    console.log('📍 User Pool:', COGNITO_CONFIG.userPoolId);
-    console.log('📍 Region:', COGNITO_CONFIG.region);
-    console.log('📍 OAuth Domain:', COGNITO_CONFIG.oauthDomain || COGNITO_CONFIG.defaultOAuthDomain);
     return true;
   } catch (error) {
-    console.error('❌ Error configurando Amplify:', error);
-    console.warn('⚠️ Continuando sin autenticación (modo desarrollo)');
     return false;
   }
 };
@@ -97,9 +88,7 @@ const Stack = createNativeStackNavigator();
 // Referencia de navegación global
 export const navigationRef = React.createRef();
 
-// ============================================================================
 // DEEP LINK HANDLER - MANEJO ROBUSTO DE OAUTH
-// ============================================================================
 
 // Estado global para evitar procesamiento duplicado
 const oauthState = {
@@ -139,7 +128,7 @@ const validateOAuthCallback = (url) => {
       state: urlObj.searchParams.get('state'),
     };
   } catch (error) {
-    console.error('❌ Error validando callback:', error.message);
+    console.error('Error validando callback:', error.message);
     throw error;
   }
 };
@@ -153,13 +142,10 @@ const fetchSessionWithRetry = async (maxAttempts = 5, delayMs = 400) => {
       const session = await fetchAuthSession({ forceRefresh: true });
       
       if (session?.tokens?.idToken) {
-        console.log(`✅ Tokens obtenidos (intento ${i + 1}/${maxAttempts})`);
         return session;
       }
       
-      console.log(`⚠️ Intento ${i + 1}/${maxAttempts}: sin tokens`);
     } catch (error) {
-      console.log(`⚠️ Intento ${i + 1}/${maxAttempts} falló:`, error.message);
     }
     
     if (i < maxAttempts - 1) {
@@ -181,10 +167,8 @@ const navigateToHome = async (maxWaitMs = 5000) => {
           index: 0,
           routes: [{ name: 'Home' }],
         });
-        console.log('✅ Navegación a Home exitosa');
         return true;
       } catch (error) {
-        console.error('❌ Error navegando:', error.message);
         return false;
       }
     }
@@ -192,22 +176,18 @@ const navigateToHome = async (maxWaitMs = 5000) => {
     await new Promise(r => setTimeout(r, 100));
   }
   
-  console.error('❌ Timeout esperando navegación');
   return false;
 };
 
 // Procesar callback de OAuth
 const processOAuthCallback = async (url) => {
-  console.log('🔄 Procesando callback de OAuth...');
   
   // Validar callback
   const callbackData = validateOAuthCallback(url);
   if (!callbackData) {
-    console.log('ℹ️ No es un callback de OAuth válido');
     return;
   }
-  
-  console.log('✅ Callback de OAuth válido detectado');
+
   
   // Esperar que Amplify procese el código de autorización
   await new Promise(r => setTimeout(r, 500));
@@ -223,15 +203,12 @@ const processOAuthCallback = async (url) => {
     if (!cognitoUser) {
       throw new Error('No se pudo obtener el usuario');
     }
-    
-    console.log('✅ Usuario obtenido:', cognitoUser.userId);
-    
+       
     // Guardar datos (crítico hacerlo ANTES de navegar)
-    const { saveAuthData, loadAuthData } = await import('./utils/mockAuth');
+    const { saveAuthData, loadAuthData } = await import('./auth/cognitoAuth');
     await saveAuthData(cognitoUser);
     await loadAuthData();
     
-    console.log('✅ Datos de autenticación guardados');
     
     // Recargar configuraciones desde el backend
     try {
@@ -255,19 +232,15 @@ const processOAuthCallback = async (url) => {
         
         // Guardar en AsyncStorage para que useSettings las detecte
         await AsyncStorage.setItem('pianoSettings', JSON.stringify(frontendSettings));
-        console.log('✅ Configuraciones del usuario cargadas desde el backend:', frontendSettings);
         
-        // ✅ Notificar a useSettings que recargue
+        //Notificar a useSettings que recargue
         try {
           const { settingsEvents } = await import('./src/utils/settingsEvents');
           settingsEvents.emit();
-          console.log('📢 Evento de recarga de settings emitido');
         } catch (emitError) {
-          console.warn('⚠️ No se pudo emitir evento de recarga:', emitError);
         }
       }
     } catch (configError) {
-      console.log('⚠️ No se pudieron cargar configuraciones del backend:', configError.message);
       // No es crítico, el hook las cargará después
     }
     
@@ -275,7 +248,6 @@ const processOAuthCallback = async (url) => {
     const navSuccess = await navigateToHome();
     
     if (!navSuccess) {
-      console.warn('⚠️ No se pudo navegar automáticamente');
       Alert.alert(
         'Inicio de sesión exitoso',
         'Por favor, ve a la pantalla principal.',
@@ -288,7 +260,7 @@ const processOAuthCallback = async (url) => {
       );
     }
   } catch (error) {
-    console.error('❌ Error procesando OAuth:', error.message);
+    console.error('Error procesando OAuth:', error.message);
     throw error;
   }
 };
@@ -299,8 +271,6 @@ const useDeepLinkHandler = () => {
     const handleDeepLink = async (event) => {
       const url = typeof event === 'string' ? event : event.url;
       
-      console.log('🔗 Deep link recibido:', url);
-      
       // Validaciones iniciales
       if (!url || !url.startsWith('pianodot://')) {
         return;
@@ -308,12 +278,10 @@ const useDeepLinkHandler = () => {
       
       // Evitar procesamiento duplicado
       if (oauthState.isProcessing) {
-        console.log('⚠️ Ya hay un proceso en curso');
         return;
       }
       
       if (oauthState.hasProcessed && oauthState.lastProcessedUrl === url) {
-        console.log('⚠️ Esta URL ya fue procesada');
         return;
       }
       
@@ -326,7 +294,7 @@ const useDeepLinkHandler = () => {
         }
         isOAuthCallback = true;
       } catch (error) {
-        console.error('❌ Callback inválido:', error.message);
+        console.error('Callback inválido:', error.message);
         Alert.alert('Error', error.message);
         return;
       }
@@ -353,11 +321,11 @@ const useDeepLinkHandler = () => {
         // Marcar como procesado exitosamente
         oauthState.hasProcessed = true;
       } catch (error) {
-        console.error('❌ Error en callback de OAuth:', error.message);
+        console.error('Error en callback de OAuth:', error.message);
         
         // Limpiar datos parciales
         try {
-          const { clearAllAuthData } = await import('./utils/mockAuth');
+          const { clearAllAuthData } = await import('./auth/cognitoAuth');
           await clearAllAuthData();
         } catch (cleanupError) {
           console.error('Error limpiando datos:', cleanupError);
@@ -402,9 +370,7 @@ const useDeepLinkHandler = () => {
   }, []);
 };
 
-// ============================================================================
 // COMPONENTE PRINCIPAL
-// ============================================================================
 
 function PianoDotApp() {
   const [selectedScore, setSelectedScore] = useState(null);
@@ -423,20 +389,14 @@ function PianoDotApp() {
 
   useDeepLinkHandler();
 
-  // ✅ SOLUCIÓN: Usar useMemo para recalcular estilos cuando settings cambia
+  //  Usar useMemo para recalcular estilos cuando settings cambia
   const styles = useMemo(() => {
-    console.log('🎨 Regenerando estilos dinámicos...');
-    console.log('   - Contrast:', settings.contrast);
-    console.log('   - FontSize:', settings.fontSize);
-    
     const sizeConfig = getCurrentSizeConfig();
     const contrastConfig = getCurrentContrastConfig();
     
     return getDynamicStyles(sizeConfig, contrastConfig, settings.contrast);
-  }, [settings.contrast, settings.fontSize]); // ✅ Dependencias críticas
+  }, [settings.contrast, settings.fontSize]);
   
-  // ✅ Log para verificar
-  console.log('🎨 Estilos aplicados - backgroundColor:', styles.container?.backgroundColor);
   
   return (
     <View style={styles.appContainer}>
@@ -446,8 +406,6 @@ function PianoDotApp() {
           initialRouteName="Welcome"
           screenOptions={{ headerShown: false }}
         >
-          {/* ❌ ANTES: getStyles() - genera estilos nuevos cada vez */}
-          {/* ✅ DESPUÉS: styles - usa los estilos memorizados */}
           
           <Stack.Screen name="Welcome">
             {(props) => <WelcomeLandingScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} speak={speak} speakIntro={speakIntro} settings={settings} />}
@@ -488,9 +446,7 @@ function PianoDotApp() {
   );
 }
 
-// ============================================================================
 // WRAPPER CON CARGA DE FUENTES
-// ============================================================================
 
 export default function App() {
   const [authLoaded, setAuthLoaded] = React.useState(false);
@@ -506,7 +462,7 @@ export default function App() {
   React.useEffect(() => {
     const loadAuth = async () => {
       try {
-        const { loadAuthData, saveAuthData } = await import('./utils/mockAuth');
+        const { loadAuthData, saveAuthData } = await import('./auth/cognitoAuth');
         const { getCurrentUser } = await import('aws-amplify/auth');
         
         // Verificar si hay un callback de OAuth (cuando regresa de Google)
@@ -516,22 +472,19 @@ export default function App() {
           
           // Si hay una sesión activa después de un redirect, obtener el usuario
           if (session.tokens && session.tokens.idToken) {
-            console.log('✅ Sesión de OAuth detectada, obteniendo usuario...');
             const cognitoUser = await getCurrentUser();
             if (cognitoUser) {
               await saveAuthData(cognitoUser);
-              console.log('✅ Usuario de Google autenticado correctamente');
             }
           }
         } catch (oauthError) {
-          console.log('ℹ️ No hay sesión de OAuth activa');
+          console.log('No hay sesión de OAuth activa');
         }
         
         const hasAuth = await loadAuthData();
         
-        // ✅ NAVEGACIÓN AUTOMÁTICA SI TIENE SESIÓN
+        //NAVEGACIÓN AUTOMÁTICA SI TIENE SESIÓN
         if (hasAuth) {
-          console.log('✅ Usuario autenticado, navegando automáticamente a Home...');
           // Esperar a que la navegación esté lista
           setTimeout(() => {
             if (navigationRef.current?.isReady()) {
@@ -539,7 +492,6 @@ export default function App() {
                 index: 0,
                 routes: [{ name: 'Home' }],
               });
-              console.log('✅ Navegación automática a Home completada');
             } else {
               // Si no está listo, reintentar después de un momento
               setTimeout(() => {
@@ -548,18 +500,15 @@ export default function App() {
                     index: 0,
                     routes: [{ name: 'Home' }],
                   });
-                  console.log('✅ Navegación automática a Home completada (reintento)');
                 }
               }, 500);
             }
           }, 100);
-        } else {
-          console.log('ℹ️ No hay sesión guardada, usuario no autenticado');
         }
       } catch (error) {
         console.error('Error cargando autenticación:', error);
         try {
-          const { clearAllAuthData } = await import('./utils/mockAuth');
+          const { clearAllAuthData } = await import('./auth/cognitoAuth');
           await clearAllAuthData();
         } catch (clearError) {
           console.error('Error limpiando datos:', clearError);

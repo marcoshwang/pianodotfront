@@ -18,17 +18,15 @@ export const usePredictions = (partituraId) => {
     if (!partituraId) return;
     
     try {
-      console.log('📊 Obteniendo detalles de partitura:', partituraId);
       setLoading(true);
       setError(null);
       
       const details = await getPartituraDetails(partituraId);
-      console.log('✅ Detalles obtenidos:', details);
       setPartituraDetails(details);
       
       return details;
     } catch (err) {
-      console.error('❌ Error obteniendo detalles:', err);
+      console.error('Error obteniendo detalles:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -41,13 +39,11 @@ export const usePredictions = (partituraId) => {
     if (!partituraId) return;
     
     try {
-      console.log('🔮 Obteniendo predicciones:', partituraId);
       const preds = await getPartituraPredicciones(partituraId);
-      console.log('✅ Predicciones obtenidas:', preds);
       setPredictions(preds);
       return preds;
     } catch (err) {
-      console.error('❌ Error obteniendo predicciones:', err);
+      console.error('Error obteniendo predicciones:', err);
       setError(err.message);
       throw err;
     }
@@ -57,7 +53,7 @@ export const usePredictions = (partituraId) => {
   const startPolling = useCallback(() => {
     if (isPolling) return;
     
-    console.log('🔄 Iniciando polling para predicciones...');
+    console.log('Iniciando polling para predicciones...');
     setIsPolling(true);
     
     const pollInterval = setInterval(async () => {
@@ -66,7 +62,7 @@ export const usePredictions = (partituraId) => {
         
         // Si ya no está procesando, detener polling
         if (details.status !== 'pending') {
-          console.log('✅ Procesamiento completado, deteniendo polling');
+          console.log('Procesamiento completado, deteniendo polling');
           clearInterval(pollInterval);
           setIsPolling(false);
           
@@ -76,7 +72,7 @@ export const usePredictions = (partituraId) => {
           }
         }
       } catch (err) {
-        console.error('❌ Error en polling:', err);
+        console.error('Error en polling:', err);
         clearInterval(pollInterval);
         setIsPolling(false);
       }
@@ -86,14 +82,14 @@ export const usePredictions = (partituraId) => {
     setTimeout(() => {
       clearInterval(pollInterval);
       setIsPolling(false);
-      console.log('⏰ Polling timeout después de 2 minutos');
+      console.log('Polling timeout después de 2 minutos');
     }, 120000);
   }, [isPolling, fetchPartituraDetails, fetchPredictions]);
 
   // Función para refrescar datos
   const refreshData = useCallback(async () => {
     try {
-      console.log('🔄 Refrescando datos de partitura...');
+      console.log('Refrescando datos de partitura...');
       const details = await fetchPartituraDetails();
       
       // Si está listo, obtener predicciones
@@ -103,7 +99,7 @@ export const usePredictions = (partituraId) => {
         startPolling();
       }
     } catch (err) {
-      console.error('❌ Error refrescando datos:', err);
+      console.error('Error refrescando datos:', err);
     }
   }, [fetchPartituraDetails, fetchPredictions, startPolling]);
 
@@ -113,18 +109,18 @@ export const usePredictions = (partituraId) => {
     
     const loadInitialData = async () => {
       try {
-        console.log('🚀 Cargando datos iniciales de partitura...');
+        console.log('Cargando datos iniciales de partitura...');
         const details = await fetchPartituraDetails();
         
         // Si está listo, obtener predicciones
         if (details.status === 'ready') {
           await fetchPredictions();
         } else if (details.status === 'pending') {
-          console.log('⏳ Partitura procesándose, iniciando polling...');
+          console.log('Partitura procesándose, iniciando polling...');
           startPolling();
         }
       } catch (err) {
-        console.error('❌ Error cargando datos iniciales:', err);
+        console.error('Error cargando datos iniciales:', err);
       }
     };
     

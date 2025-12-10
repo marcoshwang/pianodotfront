@@ -44,7 +44,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
   const [progressSummary, setProgressSummary] = useState(null);
   const [loadingProgress, setLoadingProgress] = useState(true);
 
-  // ✅ Cargar progreso guardado cuando se enfoca la pantalla
+  //Cargar progreso guardado cuando se enfoca la pantalla
   useFocusEffect(
     React.useCallback(() => {
       if (score?.id) {
@@ -53,15 +53,13 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     }, [score?.id])
   );
 
-  // ✅ CORREGIDO: Función para cargar progreso guardado y calcular con predicciones
+  //Función para cargar progreso guardado y calcular con predicciones
   const loadSavedProgress = async () => {
     try {
       setLoadingProgress(true);
-      console.log('📂 Cargando progreso para partitura:', score?.id);
       
       // Cargar progreso guardado localmente
       const localProgress = await loadProgress(score.id);
-      console.log('📂 Progreso local:', localProgress);
       setSavedProgress(localProgress);
       
       // Obtener predicciones para calcular total de compases
@@ -74,18 +72,11 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
         // Encontrar el número de compás más alto
         const compasesUnicos = [...new Set(predicciones.predicciones.map(evento => evento.compas))];
         totalCompases = Math.max(...compasesUnicos);
-        console.log('✅ Total de compases calculado desde predicciones:', totalCompases);
-        console.log('📊 Compases únicos encontrados:', compasesUnicos.sort((a, b) => a - b).slice(0, 10), '...'); // Mostrar los primeros 10
-      } else {
-        console.warn('⚠️ Estructura de predicciones inesperada:', predicciones);
-      }
+      } 
       
-      console.log('🔢 Total de compases final:', totalCompases);
       
       // Obtener resumen del backend (compases visitados)
-      console.log('🔍 Obteniendo resumen del backend...');
       const resumen = await getProgressSummary(score.id);
-      console.log('📊 Resumen del backend:', resumen);
       
       // Combinar datos
       const progressData = {
@@ -93,13 +84,10 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
         total_compases: totalCompases,
       };
       
-      console.log('📊 Datos combinados finales:', progressData);
       setProgressSummary(progressData);
-      
-      console.log('✅ Progreso cargado completamente');
     } catch (err) {
-      console.error('❌ Error cargando progreso:', err);
-      console.error('❌ Error stack:', err.stack);
+      console.error('Error cargando progreso:', err);
+      console.error('Error stack:', err.stack);
     } finally {
       setLoadingProgress(false);
     }
@@ -108,7 +96,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
   // Navegar automáticamente cuando la partitura esté lista (solo si el popup está visible)
   useEffect(() => {
     if (showStatus && isReady) {
-      console.log('🎵 Partitura lista, navegando a Piano...');
+      console.log('Partitura lista, navegando a Piano...');
       navigation.navigate('Piano', { score });
     }
   }, [showStatus, isReady, navigation, score]);
@@ -119,7 +107,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     navigation.goBack();
   };
 
-  // ✅ MODIFICADO: Iniciar desde el principio (SIN generar audio)
+  // Iniciar desde el principio (SIN generar audio)
   const handleStartFromBeginning = async () => {
     triggerVibration();
     
@@ -143,14 +131,11 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     }
   };
 
-  // ✅ MODIFICADO: Continuar desde el progreso guardado (SIN generar audio)
+  // Continuar desde el progreso guardado (SIN generar audio)
   const handleContinueFromProgress = async () => {
     triggerVibration();
     
     if (isReady) {
-      console.log('🎵 Continuando desde progreso guardado...');
-      console.log('🎵 Compás guardado:', savedProgress?.currentCompas);
-      console.log('🎵 Estableciendo ID de partitura global:', score.id);
       setPartituraId(score.id);
       
       // Solo establecer el flag para continuar desde progreso
@@ -167,7 +152,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     }
   };
 
-  // ✅ Calcular porcentaje de progreso
+  //Calcular porcentaje de progreso
   const getProgressPercentage = () => {
     if (!progressSummary || !savedProgress) return 0;
     
@@ -216,7 +201,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
       </View>
 
       <View style={styles.content}>
-        {/* ✅ MEJORADO: Progreso guardado con datos reales del backend */}
+        {/*Progreso guardado con datos reales del backend */}
         {loadingProgress ? (
           <View style={styles.progressInfo}>
             <ActivityIndicator size="small" color="#FF9500" />
