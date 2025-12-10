@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 // Función para obtener estilos dinámicos
-export const getDynamicStyles = (sizeConfig, contrastConfig) => {
+export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
   return StyleSheet.create({
     // Estilos principales de la aplicación
     appContainer: {
@@ -405,12 +405,12 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
       letterSpacing: 1,
       lineHeight: sizeConfig.buttonText * 1.2 * 1.2,
     },
-    
+
     progressInfo: {
       backgroundColor: contrastConfig.backgroundColor,
       borderRadius: 16,
-      padding: 20,
-      marginBottom: 10,
+      padding: 25,
+      marginBottom: 25,
       marginTop: 10,
       width: '100%',
       alignItems: 'center',
@@ -427,41 +427,43 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     },
     
     progressText: {
-      fontSize: sizeConfig.buttonText * 0.9,
-      fontFamily: 'Fredoka_600SemiBold',
-      color: contrastConfig.subtitleColor === '#76FF03' ? '#76FF03' : 
-             contrastConfig.subtitleColor === '#3FE6FF' ? '#3FE6FF' : 
-             contrastConfig.subtitleColor === '#FFFF00' ? '#FFFF00' : 
-             contrastConfig.subtitleColor === '#FFFFFF' ? '#FFFFFF' : '#000000',
+      fontSize: 33, 
+      fontFamily: 'Fredoka_700Bold',
+      color: contrastConfig.subtitleColor,
       textAlign: 'center',
-      marginBottom: 5,
+      marginBottom: 2,
+      letterSpacing: 0.5,
+      lineHeight: 30,
     },
     
     progressSubtext: {
-      fontSize: sizeConfig.buttonText * 0.7,
+      fontSize: 18,
       fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
-      opacity: 0.8,
+      opacity: 0.9,
+      marginBottom: 1,
+      lineHeight: 20,
     },
     
     actionButtonsContainer: {
       flex: 1,
+      width: '100%',
       justifyContent: 'space-evenly',
-      paddingTop: sizeConfig.buttonPadding,
-      paddingBottom: sizeConfig.buttonPadding,
+      paddingTop: 0,
+      paddingBottom: 20,
     },
     
     actionButton: {
       backgroundColor: contrastConfig.buttonColor,
       borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 3,
+      paddingVertical: sizeConfig.buttonPadding * 2, 
       paddingHorizontal: 20,
-      marginVertical: 15,
+      marginVertical: 12,
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
-      minHeight: sizeConfig.buttonText * 4,
+      minHeight: sizeConfig.buttonPadding * 6,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -474,11 +476,11 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
     
     actionButtonText: {
       color: contrastConfig.textColor,
-      fontSize: sizeConfig.buttonText * 1.1,
+      fontSize: sizeConfig.buttonText * 1.0,
       fontFamily: 'Fredoka_700Bold',
       textAlign: 'center',
-      letterSpacing: 1.5,
-      lineHeight: sizeConfig.buttonText * 1.1 * 1.3,
+      letterSpacing: 1.2,
+      lineHeight: sizeConfig.buttonText * 1.0 * 1.3,
     },
     
     resetButton: {
@@ -542,6 +544,25 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
       paddingVertical: 15,
       backgroundColor: contrastConfig.backgroundColor,
       marginTop: -30,
+    },
+
+    // Mensaje de lección terminada
+    lessonCompleteContainer: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 15,
+      paddingVertical: 15,
+      paddingHorizontal: 25,
+      marginHorizontal: 20,
+      marginBottom: 15,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 8,
     },
     
     controlsButton: {
@@ -706,6 +727,41 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
       textAlign: 'center',
       letterSpacing: 1.5,
       lineHeight: sizeConfig.buttonText * 2.5,
+    },
+    
+    // Estilos para botón en WelcomeLandingScreen
+    newButtonContainer: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      paddingTop: 10,
+    },
+    
+    newButton: {
+      backgroundColor: '#000000',
+      borderRadius: sizeConfig.buttonPadding * 0.9,
+      paddingVertical: sizeConfig.buttonPadding * 8,
+      paddingHorizontal: sizeConfig.buttonPadding * 2.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: '#333333',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 5,
+      elevation: 8,
+    },
+    
+    newButtonText: {
+      color: '#FFFFFF',
+      fontSize: sizeConfig.buttonText * 1.2,
+      fontFamily: 'Fredoka_600SemiBold',
+      textAlign: 'center',
+      letterSpacing: sizeConfig.buttonText * 0.05,
+      lineHeight: sizeConfig.buttonText * 1.2 * 1.3,
     },
     
     // Estilos para pantalla de autenticación
@@ -955,31 +1011,315 @@ export const getDynamicStyles = (sizeConfig, contrastConfig) => {
       letterSpacing: 1,
       lineHeight: sizeConfig.buttonText * 1.2 * 1.2,
     },
+
+    // Estilos para popup de upload
+    uploadPopup: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
     
-    registerButton: {
-      backgroundColor: contrastConfig.buttonColor,
-      borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 2,
-      paddingHorizontal: 40,
+    uploadPopupContent: {
+      backgroundColor: contrastConfig.backgroundColor,
+      borderRadius: 20,
+      padding: 30,
+      alignItems: 'center',
+      minWidth: 280,
+      maxWidth: '90%',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    
+    uploadPopupTitle: {
+      fontSize: sizeConfig.titleSize,
+      fontFamily: 'Fredoka_700Bold',
+      color: contrastConfig.textColor,
+      textAlign: 'center',
+      marginTop: 15,
+      marginBottom: 10,
+    },
+    
+    uploadPopupMessage: {
+      fontSize: sizeConfig.textSize,
+      fontFamily: 'Fredoka_400Regular',
+      color: contrastConfig.subtitleColor,
+      textAlign: 'center',
+      lineHeight: sizeConfig.textSize * 1.4,
+    },
+
+    // Estilos para ScoreDetailScreen con predicciones
+    scoreInfoContainer: {
+      backgroundColor: contrastConfig.cardBackground,
+      borderRadius: 15,
+      padding: 20,
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    
+    scoreTitle: {
+      fontSize: sizeConfig.titleSize,
+      fontFamily: 'Fredoka_700Bold',
+      color: contrastConfig.textColor,
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    
+    scoreSubtitle: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
+      color: contrastConfig.subtitleColor,
+      textAlign: 'center',
+      fontStyle: 'italic',
+      marginBottom: 15,
+    },
+    
+    statusContainer: {
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      marginBottom: 15,
+      padding: 10,
+      backgroundColor: contrastConfig.backgroundColor,
+      borderRadius: 10,
+    },
+    
+    statusText: {
+      fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_500Medium',
+      color: contrastConfig.textColor,
+      marginLeft: 8,
+    },
+    
+    statusSubtext: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
+      color: contrastConfig.subtitleColor,
+      marginLeft: 8,
+      fontStyle: 'italic',
+    },
+    
+    readyStatusText: {
+      fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_700Bold',
+      color: '#34C759',
+    },
+    
+    errorStatusText: {
+      fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_700Bold',
+      color: '#FF3B30',
+    },
+    
+    detailsContainer: {
+      marginBottom: 15,
+    },
+    
+    detailsTitle: {
+      fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_700Bold',
+      color: contrastConfig.textColor,
+      marginBottom: 8,
+    },
+    
+    detailText: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
+      color: contrastConfig.subtitleColor,
+      marginBottom: 4,
+      lineHeight: (sizeConfig.textSize || 16) * 1.3,
+    },
+    
+    predictionsContainer: {
+      marginBottom: 15,
+    },
+    
+    predictionsTitle: {
+      fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_700Bold',
+      color: contrastConfig.textColor,
+      marginBottom: 8,
+    },
+    
+    predictionItem: {
+      backgroundColor: contrastConfig.backgroundColor,
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 5,
+    },
+    
+    predictionText: {
+      fontSize: (sizeConfig.textSize || 16) * 0.9,
+      fontFamily: 'Fredoka_400Regular',
+      color: contrastConfig.textColor,
+      lineHeight: (sizeConfig.textSize || 16) * 1.2,
+    },
+    
+    refreshButton: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 10,
+      padding: 12,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    
+    refreshButtonText: {
+      color: contrastConfig.textColor,
+      fontSize: (sizeConfig.buttonText || 18) * 0.9,
+      fontFamily: 'Fredoka_700Bold',
+    },
+    
+    // Contenedor del popup
+    popupContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1000,
+    },
+    
+    // Estilos para popup de estado
+    statusPopup: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    
+    statusPopupContent: {
+      backgroundColor: currentTheme === 'whiteBlack' ? '#000000' : contrastConfig.buttonColor,
+      borderRadius: 30,
+      padding: 60,
+      margin: 40,
+      alignItems: 'center',
       shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 10,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 20,
+      elevation: 20,
+      minWidth: 350,
+      maxWidth: 420,
+      minHeight: 300,
+      borderWidth: 2,
+      borderColor: contrastConfig.borderColor || '#E0E0E0',
+    },
+    
+    retryButton: {
+      backgroundColor: contrastConfig.buttonColor,
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 15,
+      minWidth: 120,
+      alignItems: 'center',
+    },
+    
+    retryButtonText: {
+      color: contrastConfig.textColor,
+      fontSize: sizeConfig.buttonText || 18,
+      fontFamily: 'Fredoka_700Bold',
+    },
+    
+    // Estilos para el popup mejorado
+    statusTitle: {
+      fontSize: (sizeConfig.textSize || 16) * 1.5,
+      fontFamily: 'Fredoka_700Bold',
+      color: currentTheme === 'whiteBlack' ? '#FFFFFF' : contrastConfig.textColor,
+      textAlign: 'center',
+      marginTop: 25,
+      marginBottom: 15,
+      letterSpacing: 0.5,
+    },
+    
+    statusSubtext: {
+      fontSize: sizeConfig.textSize || 16,
+      fontFamily: 'Fredoka_400Regular',
+      color: currentTheme === 'whiteBlack' ? '#FFFFFF' : contrastConfig.subtitleColor,
+      textAlign: 'center',
+      marginBottom: 35,
+      lineHeight: (sizeConfig.textSize || 16) * 1.8,
+      paddingHorizontal: 20,
+    },
+    
+    okButton: {
+      backgroundColor: currentTheme === 'whiteBlack' ? '#808080' : '#000000',
+      borderRadius: 25,
+      paddingVertical: 18,
+      paddingHorizontal: 60,
+      minWidth: 200,
+      alignItems: 'center',
+      shadowColor: currentTheme === 'whiteBlack' ? '#808080' : '#000000',
       shadowOffset: {
         width: 0,
         height: 4,
       },
       shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 6,
+      shadowRadius: 8,
+      elevation: 8,
     },
     
-    registerButtonText: {
+    okButtonText: {
       color: contrastConfig.textColor,
-      fontSize: sizeConfig.buttonText * 0.9,
+      fontSize: sizeConfig.buttonText || 18,
+      fontFamily: 'Fredoka_600SemiBold',
+      letterSpacing: 0.5,
+    },
+
+    progressContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 15,
+      marginHorizontal: 20,
+      marginVertical: 10,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: '#4CAF50',
+    },
+
+    // Notificación de progreso cargado
+    progressNotification: {
+      position: 'absolute',
+      top: 80,
+      left: 20,
+      right: 20,
+      padding: 15,
+      borderRadius: 10,
+      zIndex: 1000,
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+    },
+
+    // Texto de la notificación
+    progressNotificationText: {
+      color: '#FFFFFF',
+      fontSize: 16,
       fontFamily: 'Fredoka_700Bold',
       textAlign: 'center',
-      letterSpacing: 1,
-      lineHeight: sizeConfig.buttonText * 0.9 * 1.2,
     },
   });
 };

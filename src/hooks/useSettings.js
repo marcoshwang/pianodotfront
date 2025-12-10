@@ -1,40 +1,169 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { getUserConfig, saveUserConfig } from '../../services/pianodotApi';
+import { settingsEvents } from '../utils/settingsEvents';
 
 export const useSettings = () => {
   const [settings, setSettings] = useState({
-    fontSize: 'large', // normal, large, extraLarge
-    contrast: 'whiteBlack', // whiteBlack, blackYellow, blackBlue, blackGreen
-    vibration: true // true, false
+    fontSize: 'normal',
+    contrast: 'whiteBlack',
+    vibration: true
   });
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const isInitialMount = useRef(true);
+  const isSaving = useRef(false);
+  const lastSavedSettings = useRef(null);
+
+  //Escuchar eventos de recarga
+  useEffect(() => {
+    const unsubscribe = settingsEvents.subscribe(() => {
+      loadSettings();
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Cargar configuraciones al inicializar
   useEffect(() => {
     loadSettings();
   }, []);
 
-  // Guardar configuraciones cuando cambien
+  // Guardar configuraciones cuando cambien (excepto en la carga inicial)
   useEffect(() => {
-    saveSettings();
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Solo guardar si las settings realmente cambiaron
+    const settingsString = JSON.stringify(settings);
+    if (lastSavedSettings.current === settingsString) {
+      return;
+    }
+
+    // Guardar con debounce
+    const timeoutId = setTimeout(() => {
+      saveSettings();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [settings]);
+
+  // Mapear valores del backend al frontend
+  const mapBackendToFrontend = (backendConfig) => {
+    const fontSizeMap = {
+      'normal': 'normal',
+      'grande': 'large',
+      'extraGrande': 'extraLarge'
+    };
+    
+    return {
+      fontSize: fontSizeMap[backendConfig.font_size] || 'normal',
+      contrast: backendConfig.tema_preferido || 'whiteBlack',
+      vibration: backendConfig.vibracion !== undefined ? backendConfig.vibracion : true
+    };
+  };
+
+  // Mapear valores del frontend al backend
+  const mapFrontendToBackend = (frontendSettings) => {
+    const fontSizeMap = {
+      'normal': 'normal',
+      'large': 'grande',
+      'extraLarge': 'extraGrande'
+    };
+    
+    return {
+      font_size: fontSizeMap[frontendSettings.fontSize] || 'normal',
+      tema_preferido: frontendSettings.contrast || 'whiteBlack',
+      vibracion: frontendSettings.vibration !== undefined ? frontendSettings.vibration : true
+    };
+  };
+
+  // Verificar si el usuario está autenticado
+  const isAuthenticated = async () => {
+    try {
+      const { getAuthToken } = await import('../../auth/cognitoAuth');
+      const token = await getAuthToken();
+      return !!token;
+    } catch (error) {
+      return false;
+    }
+  };
 
   const loadSettings = async () => {
     try {
-      const savedSettings = await AsyncStorage.getItem('pianoSettings');
-      if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+      setIsLoading(true);
+      
+      // Verificar autenticación
+      const authenticated = await isAuthenticated();
+      
+      let loadedSettings = null;
+      
+      if (authenticated) {
+        try {
+          const backendConfig = await getUserConfig();
+          
+          if (backendConfig) {
+            loadedSettings = mapBackendToFrontend(backendConfig);;
+            await AsyncStorage.setItem('pianoSettings', JSON.stringify(loadedSettings));
+          }
+        } catch (backendError) {
+        }
       }
+      
+      if (!loadedSettings) {
+        const savedSettings = await AsyncStorage.getItem('pianoSettings');
+        
+        if (savedSettings) {
+          loadedSettings = JSON.parse(savedSettings);
+        }
+      }
+      
+      if (loadedSettings) {
+        setSettings(loadedSettings);
+        lastSavedSettings.current = JSON.stringify(loadedSettings);
+      }
+      
     } catch (error) {
-      console.log('Error loading settings:', error);
+      console.error('Error cargando configuración:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const saveSettings = async () => {
+    if (isSaving.current) {
+      return;
+    }
+
     try {
-      await AsyncStorage.setItem('pianoSettings', JSON.stringify(settings));
+      isSaving.current = true;
+      
+      await AsyncStorage.setItem('pianoSettings', JSON.stringify(settings));     
+      const authenticated = await isAuthenticated();
+      
+      if (authenticated) {
+
+        try {
+          const backendConfig = mapFrontendToBackend(settings);
+          
+          await saveUserConfig(backendConfig);
+          
+          lastSavedSettings.current = JSON.stringify(settings);
+        } catch (backendError) {
+          console.error('Error guardando en backend:', backendError.message);
+        }
+      } else {
+        lastSavedSettings.current = JSON.stringify(settings);
+      }
     } catch (error) {
-      console.log('Error saving settings:', error);
+      console.error('Error guardando configuración:', error);
+    } finally {
+      isSaving.current = false;
     }
   };
 
@@ -45,38 +174,66 @@ export const useSettings = () => {
     }));
   };
 
+  const resetSettings = async (skipBackendSync = false) => {
+    try {
+      
+      const defaultSettings = {
+        fontSize: 'normal',
+        contrast: 'whiteBlack',
+        vibration: true
+      };
+      
+      setSettings(defaultSettings);
+      lastSavedSettings.current = JSON.stringify(defaultSettings);
+      
+      await AsyncStorage.removeItem('pianoSettings');
+      
+      if (!skipBackendSync) {
+        const authenticated = await isAuthenticated();
+        if (authenticated) {
+          try {
+            const backendConfig = mapFrontendToBackend(defaultSettings);
+            await saveUserConfig(backendConfig);
+          } catch (error) {
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error reseteando configuraciones:', error);
+    }
+  };
+
   const triggerVibration = () => {
     if (settings.vibration) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   };
 
-  // Configuraciones de tamaño
   const fontSizeConfig = {
     normal: {
-      buttonText: 35, // 24 * 2
+      buttonText: 35,
       buttonPadding: 10,
       logoWidth: 250,
       logoHeight: 100,
-      subtitleSize: 28 // 14 * 2
+      subtitleSize: 28
     },
     large: {
-      buttonText: 45, // 28 * 2
+      buttonText: 45,
       buttonPadding: 10,
       logoWidth: 280,
       logoHeight: 120,
-      subtitleSize: 32 // 16 * 2
+      subtitleSize: 32
     },
     extraLarge: {
-      buttonText: 49, // 32 * 2
+      buttonText: 49,
       buttonPadding: 10,
       logoWidth: 320,
       logoHeight: 140,
-      subtitleSize: 36 // 18 * 2
+      subtitleSize: 36
     }
   };
 
-  // Configuraciones de contraste
   const contrastConfig = {
     whiteBlack: {
       backgroundColor: '#FFFFFF',
@@ -125,6 +282,9 @@ export const useSettings = () => {
     getCurrentSizeConfig,
     getCurrentContrastConfig,
     fontSizeConfig,
-    contrastConfig
+    contrastConfig,
+    isLoading,
+    resetSettings,
+    loadSettings
   };
 };

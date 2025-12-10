@@ -8,36 +8,26 @@ import {
   BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { usePractice } from '../context/PracticeContext';
 
 const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings, speak, speakIntro }) => {
-  // Prevenir que el botón back de Android salga de la aplicación cuando estemos en HomeScreen
+  // Contexto de práctica para detener audio
+  const { stopAudio } = usePractice();
+
+
+
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        // Retornar true significa que interceptamos el evento y no permitimos la acción por defecto
-        // Esto previene que el usuario salga de la app usando el botón back
         return true;
       };
 
-      // Agregar el listener cuando la pantalla está enfocada
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
-      // Limpiar el listener cuando la pantalla pierde el foco
       return () => subscription?.remove();
     }, [])
   );
 
-  // Reproducir mensaje introductorio cuando se carga la pantalla
-  useEffect(() => {
-    const homeMessage = "Pantalla principal. Tienes tres opciones disponibles: Cargar Partituras para subir nuevas partituras, Mis Partituras para ver tus partituras guardadas, y Configuración para ajustar las opciones de la aplicación.";
-    
-    // Usar speakIntro si está disponible, sino usar speak
-    if (speakIntro) {
-      speakIntro(homeMessage);
-    } else if (speak) {
-      speak(homeMessage);
-    }
-  }, []);
   const handleLoadScores = () => {
     triggerVibration();
     stop();
@@ -58,7 +48,6 @@ const HomeScreen = ({ navigation, styles, triggerVibration, stop, settings, spea
 
   // Función para determinar si necesita separar el texto según el tamaño
   const getConfiguracionText = () => {
-    // Si el tamaño de fuente es grande o extra grande, separar el texto
     if (settings.fontSize === 'large' || settings.fontSize === 'extraLarge') {
       return 'CONFIGU\nRACIÓN';
     }

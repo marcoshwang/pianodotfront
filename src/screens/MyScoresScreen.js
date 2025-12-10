@@ -6,29 +6,62 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getPartituras, deletePartitura, testConnectivity, testMultipleURLs, testPartiturasEndpoint } from '../../services/pianodotApi';
+import { getBaseURL } from '../../config/api.config';
 
 const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
   const [savedScores, setSavedScores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   // Cargar partituras guardadas al montar el componente
   useEffect(() => {
     loadSavedScores();
   }, []);
 
-  const loadSavedScores = async () => {
+  useFocusEffect(
+    React.useCallback(() => {
+      loadSavedScores();
+    }, [])
+  );
+
+  const loadSavedScores = async (isRefresh = false) => {
     try {
-      const savedScoresString = await AsyncStorage.getItem('savedScores');
-      if (savedScoresString) {
-        const scores = JSON.parse(savedScoresString);
-        setSavedScores(scores);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
+      setError(null);
+      
+      const backendScores = await getPartituras();
+      
+      setSavedScores(backendScores);
+      
+      await AsyncStorage.setItem('savedScores', JSON.stringify(backendScores));
+      
     } catch (error) {
-      console.error('Error al cargar partituras:', error);
+      console.error('Error al sincronizar con el backend:', error);
+      setError(error.message);
+      
+      try {
+        const savedScoresString = await AsyncStorage.getItem('savedScores');
+        if (savedScoresString) {
+          const scores = JSON.parse(savedScoresString);
+          setSavedScores(scores);
+        }
+      } catch (localError) {
+        console.error('Error cargando partituras locales:', localError);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -45,13 +78,25 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
 
   const handleDeleteScore = async (scoreIndex) => {
     triggerVibration();
+    const score = savedScores[scoreIndex];
+    
     try {
-      const updatedScores = savedScores.filter((_, index) => index !== scoreIndex);
-      await AsyncStorage.setItem('savedScores', JSON.stringify(updatedScores));
-      setSavedScores(updatedScores);
+      if (score.id) {
+        try {
+          await deletePartitura(score.id);
+        } catch (backendError) {
+          console.error('Error eliminando del backend:', backendError);
+          throw new Error(`Error eliminando del backend: ${backendError.message}`);
+        }
+      }
+      
+      await loadSavedScores();
+      
     } catch (error) {
       console.error('Error al eliminar partitura:', error);
-      Alert.alert('Error', 'No se pudo eliminar la partitura');
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      Alert.alert('Error', `No se pudo eliminar la partitura: ${error.message}`);
     }
   };
 
@@ -71,7 +116,20 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
 
       <View style={styles.content}>
         {loading ? (
-          <Text style={styles.description}>Cargando partituras...</Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.description}>Cargando partituras...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => loadSavedScores()}
+            >
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
         ) : savedScores.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.description}>
@@ -82,7 +140,18 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
             </Text>
           </View>
         ) : (
-          <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={true}>
+          <ScrollView 
+            style={styles.scrollContainer} 
+            showsVerticalScrollIndicator={true}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => loadSavedScores(true)}
+                colors={['#007AFF']}
+                tintColor="#007AFF"
+              />
+            }
+          >
             {savedScores.map((score, index) => (
               <View key={index} style={styles.scoreItem}>
                 <TouchableOpacity
