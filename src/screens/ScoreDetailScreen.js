@@ -58,27 +58,20 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     try {
       setLoadingProgress(true);
       
-      // Cargar progreso guardado localmente
       const localProgress = await loadProgress(score.id);
       setSavedProgress(localProgress);
       
-      // Obtener predicciones para calcular total de compases
       const predicciones = await getPartituraPredicciones(score.id);
       
       let totalCompases = 0;
       
-      // La estructura es: { partitura_id: "...", predicciones: [...] }
       if (predicciones?.predicciones && Array.isArray(predicciones.predicciones)) {
-        // Encontrar el número de compás más alto
         const compasesUnicos = [...new Set(predicciones.predicciones.map(evento => evento.compas))];
         totalCompases = Math.max(...compasesUnicos);
       } 
       
-      
-      // Obtener resumen del backend
       const resumen = await getProgressSummary(score.id);
       
-      // Combinar datos
       const progressData = {
         compases_visitados: resumen?.compases_visitados || 0,
         total_compases: totalCompases,
@@ -93,7 +86,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     }
   };
 
-  // Navegar automáticamente cuando la partitura esté lista (solo si el popup está visible)
+  // Navegar automáticamente cuando la partitura esté lista
   useEffect(() => {
     if (showStatus && isReady) {
       navigation.navigate('Piano', { score });
@@ -106,50 +99,37 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     navigation.goBack();
   };
 
-  // Iniciar desde el principio (SIN generar audio)
+  // Iniciar desde el principio
   const handleStartFromBeginning = async () => {
     triggerVibration();
-    
-    // Si la partitura ya está lista, establecer ID global y navegar
     if (isReady) {
       setPartituraId(score.id);
-      
-      // Solo establecer el flag para iniciar desde el principio
-      // NO llamar a startNewPractice aquí para evitar generación de audio
       await AsyncStorage.setItem(`start_from_beginning_${score.id}`, 'true');
       
       navigation.navigate('Piano', { score, fromBeginning: true });
       return;
     }
-    
-    // Si está procesando o pendiente, mostrar popup
     if (isProcessing || partituraDetails?.status === 'pending') {
       setShowStatus(true);
     }
   };
 
-  // Continuar desde el progreso guardado (SIN generar audio)
   const handleContinueFromProgress = async () => {
     triggerVibration();
     
     if (isReady) {
       setPartituraId(score.id);
       
-      // Solo establecer el flag para continuar desde progreso
-      // NO llamar a startNewPractice aquí para evitar generación de audio
       await AsyncStorage.removeItem(`start_from_beginning_${score.id}`);
       
       navigation.navigate('Piano', { score, continueFromProgress: true });
       return;
     }
-    
-    // Si está procesando o pendiente, mostrar popup
     if (isProcessing || partituraDetails?.status === 'pending') {
       setShowStatus(true);
     }
   };
 
-  //Calcular porcentaje de progreso
   const getProgressPercentage = () => {
     if (!progressSummary || !savedProgress) return 0;
     
@@ -158,7 +138,6 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     
     if (!total_compases || total_compases === 0) return 0;
     
-    // Calcular progreso basado en compás actual / total de compases
     return Math.round((currentCompas / total_compases) * 100);
   };
 
@@ -283,7 +262,6 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
                 style={styles.okButton}
                 onPress={() => {
                   setShowStatus(false);
-                  // Si está lista, navegar
                   if (isReady) {
                     navigation.navigate('Piano', { score });
                   }

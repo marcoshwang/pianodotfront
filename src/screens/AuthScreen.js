@@ -14,9 +14,7 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [oauthInitiated, setOauthInitiated] = useState(false);
 
-  // Limpiar loading state cuando el componente se vuelve a montar
   useEffect(() => {
-    // Si OAuth fue iniciado pero volvimos a esta pantalla, significa que falló o se canceló
     if (oauthInitiated) {
       setIsLoadingGoogle(false);
       setOauthInitiated(false);
@@ -24,7 +22,6 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
   }, []);
 
   const handleEmailAuth = () => {
-    // No iniciar si ya hay un proceso OAuth en curso
     if (isLoadingGoogle) {
       return;
     }
@@ -35,7 +32,6 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
   };
 
   const handleGoogleAuth = async () => {
-    // Evitar doble tap
     if (isLoadingGoogle) {
       return;
     }
@@ -46,33 +42,22 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
       setOauthInitiated(true);
       
       
-      // Iniciar el flujo de autenticación con Google
       await loginWithGoogle();
       
-      // Si llegamos aquí, la redirección se inició correctamente
-      // El loading state se mantendrá hasta que:
-      // 1. El deep link handler complete exitosamente (navega a Home)
-      // 2. Haya un error y el usuario vuelva a esta pantalla
-      // 3. El usuario cancele en el navegador y vuelva
-      // Timeout de seguridad: si después de 60 segundos seguimos en esta pantalla,
-      // resetear el loading state (el usuario probablemente canceló)
       setTimeout(() => {
         setIsLoadingGoogle(false);
       }, 60000);
       
     } catch (error) {
-      // Resetear estados
       setIsLoadingGoogle(false);
       setOauthInitiated(false);
       
-      // Si el usuario canceló la autenticación, no mostrar error (es una acción normal)
       if (error.isCancellation || 
           error.message?.toLowerCase().includes('cancel') ||
           error.message?.includes('cancelada por el usuario')) {
         return;
       }
       
-      // Para otros errores, mostrar alert al usuario
       console.error('Error en autenticación con Google:', error);
       Alert.alert(
         'Error de autenticación',

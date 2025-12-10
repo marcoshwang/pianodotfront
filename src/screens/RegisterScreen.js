@@ -36,7 +36,6 @@ const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }
       const name = `${nombre} ${apellido}`.trim();
       const result = await register(email, password, name);
       
-      // Navegar directamente a Login sin popup
       stop();
       navigation.replace('Login');
     } catch (error) {

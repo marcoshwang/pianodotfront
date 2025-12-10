@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 
 /**
  * Almacenamiento seguro para tokens y datos sensibles
- * Usa Keychain en iOS y EncryptedSharedPreferences en Android
  */
 const STORAGE_KEYS = {
   ID_TOKEN: 'pianodot_id_token',
@@ -39,7 +38,6 @@ export const setSecureItem = async (key, value) => {
       throw new Error(`Clave inválida: ${key}. Solo se permiten letras, números, ".", "-", "_"`);
     }
 
-    // En web, SecureStore no está disponible, usar localStorage
     if (Platform.OS === 'web') {
       localStorage.setItem(key, value);
       return;
@@ -64,7 +62,6 @@ export const getSecureItem = async (key) => {
       return null;
     }
 
-    // En web, usar localStorage
     if (Platform.OS === 'web') {
       return localStorage.getItem(key);
     }
@@ -89,7 +86,6 @@ export const deleteSecureItem = async (key) => {
       return;
     }
 
-    // En web, usar localStorage
     if (Platform.OS === 'web') {
       localStorage.removeItem(key);
       return;
@@ -98,11 +94,10 @@ export const deleteSecureItem = async (key) => {
     await SecureStore.deleteItemAsync(key);
   } catch (error) {
     console.error(`Error eliminando ${key}:`, error);
-    // No lanzar error, solo loguear
   }
 };
 
-// ===== FUNCIONES PARA TOKENS DE AUTENTICACIÓN =====
+//FUNCIONES PARA TOKENS DE AUTENTICACIÓN
 
 /**
  * Guarda el ID Token de forma segura
@@ -260,12 +255,10 @@ export const getAllTokens = async () => {
 };
 
 export default {
-  // Funciones genéricas
   setSecureItem,
   getSecureItem,
   deleteSecureItem,
-  
-  // Funciones específicas
+
   saveIdToken,
   getIdToken,
   saveAccessToken,
@@ -279,6 +272,5 @@ export default {
   hasStoredTokens,
   getAllTokens,
   
-  // Constantes
   STORAGE_KEYS,
 };

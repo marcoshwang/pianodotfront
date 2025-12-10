@@ -16,7 +16,7 @@ export const useSettings = () => {
   const isSaving = useRef(false);
   const lastSavedSettings = useRef(null);
 
-  //Escuchar eventos de recarga (por ejemplo, después de login con OAuth)
+  //Escuchar eventos de recarga
   useEffect(() => {
     const unsubscribe = settingsEvents.subscribe(() => {
       loadSettings();
@@ -104,22 +104,17 @@ export const useSettings = () => {
       let loadedSettings = null;
       
       if (authenticated) {
-        // Intentar cargar desde el backend
         try {
           const backendConfig = await getUserConfig();
           
           if (backendConfig) {
             loadedSettings = mapBackendToFrontend(backendConfig);;
-            
-            // Guardar en AsyncStorage como backup
             await AsyncStorage.setItem('pianoSettings', JSON.stringify(loadedSettings));
           }
         } catch (backendError) {
-          // Continuar con fallback a AsyncStorage
         }
       }
       
-      // Si no hay settings del backend, intentar cargar desde AsyncStorage
       if (!loadedSettings) {
         const savedSettings = await AsyncStorage.getItem('pianoSettings');
         
@@ -128,7 +123,6 @@ export const useSettings = () => {
         }
       }
       
-      // Actualizar estado si hay settings cargadas
       if (loadedSettings) {
         setSettings(loadedSettings);
         lastSavedSettings.current = JSON.stringify(loadedSettings);
@@ -142,7 +136,6 @@ export const useSettings = () => {
   };
 
   const saveSettings = async () => {
-    // Prevenir guardados simultáneos
     if (isSaving.current) {
       return;
     }
@@ -150,23 +143,19 @@ export const useSettings = () => {
     try {
       isSaving.current = true;
       
-      // Guardar en AsyncStorage primero (más rápido)
       await AsyncStorage.setItem('pianoSettings', JSON.stringify(settings));     
-      // Verificar autenticación
       const authenticated = await isAuthenticated();
       
       if (authenticated) {
-        // Guardar en backend
+
         try {
           const backendConfig = mapFrontendToBackend(settings);
           
           await saveUserConfig(backendConfig);
           
-          // Actualizar referencia de última configuración guardada
           lastSavedSettings.current = JSON.stringify(settings);
         } catch (backendError) {
           console.error('Error guardando en backend:', backendError.message);
-          // No lanzar error - ya guardamos localmente
         }
       } else {
         lastSavedSettings.current = JSON.stringify(settings);
@@ -194,14 +183,11 @@ export const useSettings = () => {
         vibration: true
       };
       
-      // Actualizar estado
       setSettings(defaultSettings);
       lastSavedSettings.current = JSON.stringify(defaultSettings);
       
-      // Limpiar AsyncStorage
       await AsyncStorage.removeItem('pianoSettings');
       
-      // Si está autenticado y NO se debe saltar la sincronización, resetear en backend
       if (!skipBackendSync) {
         const authenticated = await isAuthenticated();
         if (authenticated) {
@@ -224,7 +210,6 @@ export const useSettings = () => {
     }
   };
 
-  // Configuraciones de tamaño
   const fontSizeConfig = {
     normal: {
       buttonText: 35,
@@ -249,7 +234,6 @@ export const useSettings = () => {
     }
   };
 
-  // Configuraciones de contraste
   const contrastConfig = {
     whiteBlack: {
       backgroundColor: '#FFFFFF',

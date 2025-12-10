@@ -23,15 +23,8 @@ export const COGNITO_CONFIG = {
     return `https://${this.cognitoEndpoint}/${this.userPoolId}`;
   },
   
-  // OAuth Domain por defecto (si no se especifica uno personalizado)
-  // IMPORTANTE: Este dominio debe coincidir EXACTAMENTE con el que aparece en AWS Cognito Console
-  // Ve a: Cognito > Tu User Pool > App integration > Domain
-  // Copia el dominio que aparece ahí y úsalo aquí
+  // OAuth Domain por defecto
   get defaultOAuthDomain() {
-    // El dominio de Cognito Hosted UI NO siempre es {userPoolId}.auth.{region}.amazoncognito.com
-    // Puede ser un dominio personalizado o un formato diferente
-    // Por defecto, intentamos el formato estándar, pero DEBES verificar en AWS Console
-    // Si el dominio no funciona, ve a AWS Console y copia el dominio exacto
     return `${this.userPoolId.toLowerCase()}.auth.${this.region}.amazoncognito.com`;
   },
 };

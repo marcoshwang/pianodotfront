@@ -59,12 +59,10 @@ export const usePredictions = (partituraId) => {
       try {
         const details = await fetchPartituraDetails();
         
-        // Si ya no está procesando, detener polling
         if (details.status !== 'pending') {
           clearInterval(pollInterval);
           setIsPolling(false);
           
-          // Obtener predicciones finales
           if (details.status === 'ready') {
             await fetchPredictions();
           }
@@ -74,9 +72,8 @@ export const usePredictions = (partituraId) => {
         clearInterval(pollInterval);
         setIsPolling(false);
       }
-    }, 3000); // Polling cada 3 segundos
+    }, 3000);
     
-    // Limpiar polling después de 2 minutos máximo
     setTimeout(() => {
       clearInterval(pollInterval);
       setIsPolling(false);
@@ -88,7 +85,6 @@ export const usePredictions = (partituraId) => {
     try {
       const details = await fetchPartituraDetails();
       
-      // Si está listo, obtener predicciones
       if (details.status === 'ready') {
         await fetchPredictions();
       } else if (details.status === 'pending') {
@@ -107,7 +103,6 @@ export const usePredictions = (partituraId) => {
       try {
         const details = await fetchPartituraDetails();
         
-        // Si está listo, obtener predicciones
         if (details.status === 'ready') {
           await fetchPredictions();
         } else if (details.status === 'pending') {
@@ -129,19 +124,16 @@ export const usePredictions = (partituraId) => {
   }, []);
 
   return {
-    // Estado
     partituraDetails,
     predictions,
     loading,
     error,
     isPolling,
     
-    // Funciones
     refreshData,
     fetchPartituraDetails,
     fetchPredictions,
-    
-    // Estados derivados
+
     isProcessing: partituraDetails?.status === 'pending',
     isReady: partituraDetails?.status === 'ready',
     hasError: partituraDetails?.status === 'error',

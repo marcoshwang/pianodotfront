@@ -1,4 +1,3 @@
-// src/utils/settingsEvents.js
 class SettingsEventEmitter {
   constructor() {
     this.listeners = [];

@@ -17,7 +17,6 @@ import { getBaseURL } from '../../config/api.config';
 const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
   const score = route.params?.score;
   
-  // Contexto de práctica
   const {
     currentPractice,
     currentCompas,
@@ -41,7 +40,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     clearPractice,
   } = usePractice();
 
-  // Estados locales
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isLoadingRepeat, setIsLoadingRepeat] = useState(false);
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -52,7 +50,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
   useEffect(() => {
     if (score?.id) {
       setPartituraId(score.id);
-      setHasLoadedProgress(false); // Resetear cuando cambia la partitura
+      setHasLoadedProgress(false);
     }
   }, [score?.id, setPartituraId]);
 
@@ -61,15 +59,12 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     useCallback(() => {
       const loadProgressOnFocus = async () => {
         if (!score?.id || hasLoadedProgress) {
-          return; // Ya se cargó o no hay partitura
+          return;
         }
 
-        // Verificar si debe iniciar desde el principio
         const startFromBeginning = await AsyncStorage.getItem(`start_from_beginning_${score.id}`);
         
         if (startFromBeginning === 'true') {
-          // Si debe iniciar desde el principio, limpiar progreso y práctica activa
-          // Limpiar progreso guardado
           try {
             const progressKey = `practice_progress_${score.id}`;
             await AsyncStorage.removeItem(progressKey);
@@ -77,13 +72,9 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
             console.error('Error limpiando progreso:', error);
           }
           
-          // Limpiar práctica activa si existe para esta partitura
-          // Pero NO crear una nueva - eso se hará cuando presione "Comenzar práctica"
           if (hasActivePractice && currentPartituraId === score.id) {
-            // Usar clearPractice para limpiar el estado sin crear uno nuevo
             try {
               await clearPractice();
-              // Restablecer el ID de partitura después de limpiar (clearPractice lo elimina)
               setPartituraId(score.id);
             } catch (error) {
               console.error('Error limpiando práctica activa:', error);
@@ -96,13 +87,12 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
           
           if (!hasPracticeForThisScore) {
             try {
-              await startNewPractice(score.id, false); // false = cargar progreso
+              await startNewPractice(score.id, false);
               setHasLoadedProgress(true);
             } catch (error) {
               console.error('Error cargando progreso automáticamente:', error);
             }
           } else {
-            // Ya hay práctica activa para esta partitura
             setHasLoadedProgress(true);
           }
         }
@@ -111,9 +101,6 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       loadProgressOnFocus();
       
       return () => {
-        // Solo detener audio si realmente está reproduciéndose
-        // El cleanup de audio se maneja en PianoScreen cuando pierde foco
-        // No necesitamos detener aquí para evitar llamadas duplicadas
       };
     }, [score?.id, hasActivePractice, currentPartituraId, startNewPractice, isPlaying, stopAudio, hasLoadedProgress])
   );
@@ -130,17 +117,14 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       triggerVibration();
       
       setIsLoadingAudio(true);
-      
-      // Iniciar la práctica si no existe (cargará progreso guardado automáticamente)
       if (!hasActivePractice) {
-        // Verificar si debe iniciar desde el principio
         const startFromBeginning = await AsyncStorage.getItem(`start_from_beginning_${score.id}`);
         
         if (startFromBeginning === 'true') {
-          await startNewPractice(score.id, true); // true = desde inicio
+          await startNewPractice(score.id, true);
           await AsyncStorage.removeItem(`start_from_beginning_${score.id}`);
         } else {
-          await startNewPractice(score.id, false); // false = cargar progreso
+          await startNewPractice(score.id, false);
         }
         
       }
@@ -159,13 +143,11 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
         pianoUrl = `${baseURL}/partituras/${score.id}/audio_piano/${compasActual}`;
       }
       
-      // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
       
       const playTimestamp = Date.now();
       
-      // Navegar a PianoScreen
       navigation.navigate('Piano', { 
         score,
         playAudio: true,
@@ -208,13 +190,11 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
         ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       }
       
-      // Precargar audios
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
       
       const playTimestamp = Date.now();
       
-      // Navegar a PianoScreen
       navigation.navigate('Piano', {
         score: { id: currentPartituraId },
         playAudio: true,
@@ -256,9 +236,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
         ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       }
       
-      // Precargar audios con manejo de errores y timeout
       try {
-        // Precargar con timeout para evitar bloqueos
         const preloadPromise = Promise.all([
           preloadAudio(pianoUrl, 'Piano'),
           preloadAudio(ttsUrl, 'TTS')
@@ -273,11 +251,9 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       }
       
       const playTimestamp = Date.now();
-      
-      // Resetear estado de carga ANTES de navegar para evitar que se quede cargando
+
       setIsLoadingNext(false);
-      
-      // Navegar a PianoScreen
+
       navigation.navigate('Piano', {
         score: { id: currentPartituraId },
         playAudio: true,
@@ -316,14 +292,12 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
         pianoUrl = `${baseURL}/partituras/${currentPartituraId}/audio_piano/${updatedPractice.state.last_compas}`;
         ttsUrl = `${baseURL}/partituras/${currentPartituraId}/audio_tts/${updatedPractice.state.last_compas}`;
       }
-      
-      // Precargar audios
+
       await preloadAudio(pianoUrl, 'Piano');
       await preloadAudio(ttsUrl, 'TTS');
       
       const playTimestamp = Date.now();
-      
-      // Navegar a PianoScreen
+
       navigation.navigate('Piano', {
         score: { id: currentPartituraId },
         playAudio: true,

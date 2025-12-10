@@ -69,7 +69,6 @@ export const getAuthToken = async () => {
 
 /**
  * Obtiene el token de autenticación de forma sincrónica (fallback)
- * NOTA: Esta función debe usarse solo como último recurso
  * @returns {string|null}
  */
 export const getAuthTokenSync = () => {
@@ -257,6 +256,6 @@ export default {
   isAuthenticated,
   getStoredUser,
   clearAuthData,
-  clearAllAuthData, // Exportar también clearAllAuthData
+  clearAllAuthData,
   getValidToken,
 };

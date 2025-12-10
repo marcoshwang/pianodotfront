@@ -5,7 +5,7 @@ import { clearAuthStorage } from '../auth/secureStorage';
 const BASE_URL = getBaseURL();
 const TIMEOUT = 30000;
 
-// ===== HELPERS INTERNOS =====
+//HELPERS INTERNOS
 
 /**
  * Crea headers con autenticación
@@ -111,7 +111,7 @@ const fetchWithTimeout = async (url, options = {}) => {
   }
 };
 
-// ===== ENDPOINTS DE AUTENTICACIÓN =====
+//ENDPOINTS DE AUTENTICACIÓN
 
 let signIn, signUp, signOut, getCurrentUserFn, fetchAuthSession, signInWithRedirect;
 
@@ -352,7 +352,7 @@ export const refreshToken = async () => {
   }
 };
 
-// ===== ENDPOINTS DE PARTITURAS =====
+//ENDPOINTS DE PARTITURAS
 
 export const uploadPartitura = async (fileData) => {
   return new Promise(async (resolve, reject) => {
@@ -510,7 +510,7 @@ export const getTimeline = async (partituraId, compas) => {
   }
 };
 
-// ===== ENDPOINTS DE PRÁCTICA =====
+//ENDPOINTS DE PRÁCTICA
 
 export const startPractice = async (partituraId) => {
   try {
@@ -572,7 +572,7 @@ export const repeatCompas = async (partituraId) => {
   }
 };
 
-// ===== ENDPOINTS DE CONFIGURACIÓN DE USUARIO =====
+//ENDPOINTS DE CONFIGURACIÓN DE USUARIO
 
 export const getUserConfig = async () => {
   try {
@@ -605,7 +605,7 @@ export const saveUserConfig = async (config) => {
   }
 };
 
-// ===== UTILIDADES =====
+//UTILIDADES
 
 export const checkBackendHealth = async () => {
   try {

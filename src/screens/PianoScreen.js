@@ -113,17 +113,13 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         await playAudioFromUrl(ttsUrl, 'TTS');
       }
       
-      // Detener el tracking del timeline cuando termine el TTS
       if (timelineCheckIntervalRef.current) {
         clearInterval(timelineCheckIntervalRef.current);
         timelineCheckIntervalRef.current = null;
       }
       
-      // Resetear audioStartTime para evitar que el tracking continúe
-      // Esto también detendrá el intervalo automáticamente por el useEffect
       setAudioStartTime(null);
       
-      // Limpiar imagen de tecla cuando termina todo
       setCurrentKeyImage(null);
 
     } catch (error) {
@@ -140,8 +136,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     if (playAudio && playTimestamp && lastTimestampRef.current !== playTimestamp) {
       lastTimestampRef.current = playTimestamp;
       hasPlayedRef.current = false;
-      
-      // Detener cualquier reproducción anterior antes de iniciar nueva
+
       if (isReproducingRef.current) {
         stopAudioRef.current().catch(() => {});
       }
@@ -156,7 +151,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         clearTimeout(timeoutId);
       };
     }
-  }, [playAudio, playTimestamp]); // Removido reproduceAudios de dependencias para evitar loops
+  }, [playAudio, playTimestamp]);
 
   const fetchTimeline = useCallback(async () => {
     if (!score?.id || !currentCompas) {
@@ -165,8 +160,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
 
     try {
       const timelineData = await getTimeline(score.id, currentCompas);
-      
-      // Log resumido del timeline
+
       const eventCount = timelineData?.timeline?.length || 0;
       const maxTimestamp = timelineData?.timeline?.length > 0 
         ? Math.max(...timelineData.timeline.map(e => e.timestamp_ms))
@@ -188,7 +182,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
 
   //Limpiar estado cuando cambia el compás o el timeline
   useEffect(() => {
-    // Resetear eventos procesados y estado visual cuando cambia el timeline
     processedEventsRef.current.clear();
     setCurrentKeyImage(null);
     setAudioStartTime(null);
@@ -203,11 +196,9 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
 
     const elapsedTimeMs = Date.now() - audioStartTime;
     
-    // Obtener el último timestamp del timeline para saber cuándo detener
     const maxTimestamp = Math.max(...timeline.timeline.map(e => e.timestamp_ms), 0);
-    const bufferMs = 1000; // Buffer de 1 segundo después del último evento
+    const bufferMs = 1000;
     
-    // Si ya pasó la duración del timeline, detener el tracking
     if (elapsedTimeMs > maxTimestamp + bufferMs) {
       if (timelineCheckIntervalRef.current) {
         clearInterval(timelineCheckIntervalRef.current);
@@ -216,17 +207,14 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       return;
     }
     
-    // Buscar eventos cercanos al tiempo actual (ventana de ±200ms)
     const currentEvents = timeline.timeline.filter(event => {
       const eventKey = `${event.timestamp_ms}_${event.pitch}_${event.mano}`;
       const timeDiff = Math.abs(event.timestamp_ms - elapsedTimeMs);
-      
-      // Solo procesar eventos dentro de la ventana de tiempo y no procesados previamente
+
       return timeDiff < 200 && !processedEventsRef.current.has(eventKey);
     });
 
     if (currentEvents.length > 0) {
-      // Ordenar por cercanía al tiempo actual y tomar el primero
       currentEvents.sort((a, b) => {
         const diffA = Math.abs(a.timestamp_ms - elapsedTimeMs);
         const diffB = Math.abs(b.timestamp_ms - elapsedTimeMs);
@@ -236,11 +224,10 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       const event = currentEvents[0];
       const eventKey = `${event.timestamp_ms}_${event.pitch}_${event.mano}`;
       
-      // Marcar como procesado
       processedEventsRef.current.add(eventKey);
       
       const note = event.pitch?.toUpperCase();
-      const mano = event.mano?.toUpperCase(); // MD o MI
+      const mano = event.mano?.toUpperCase();
       
       console.log('NOTA DETECTADA:', {
         nota: note,
@@ -251,7 +238,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       });
 
       if (note && mano && (mano === 'MD' || mano === 'MI')) {
-        // Validar que la nota sea válida (puede incluir # o b)
         const validNotePattern = /^[A-G](#|b|)?$/;
         if (!validNotePattern.test(note)) {
           return;
@@ -261,7 +247,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
           const keyImage = getKeyImageForNote(note, mano);
           
           if (keyImage) {
-            // Validar que la imagen sea válida antes de establecerla
             if (typeof keyImage === 'number' || (keyImage && keyImage.uri)) {
               setCurrentKeyImage(keyImage);
             } 
@@ -273,7 +258,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     }
   }, [timeline, audioStartTime, getKeyImageForNote]);
 
-  //Intervalo para verificar timeline (cada 50ms para precisión)
   useEffect(() => {
     if (audioStartTime && timeline) {
       timelineCheckIntervalRef.current = setInterval(() => {

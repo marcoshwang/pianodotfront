@@ -25,7 +25,6 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
     loadSavedScores();
   }, []);
 
-  // Sincronizar automáticamente cada vez que el usuario entre a la pantalla
   useFocusEffect(
     React.useCallback(() => {
       loadSavedScores();
@@ -43,17 +42,14 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
       
       const backendScores = await getPartituras();
       
-      // Actualizar estado con las partituras del backend
       setSavedScores(backendScores);
       
-      // También actualizar AsyncStorage como respaldo
       await AsyncStorage.setItem('savedScores', JSON.stringify(backendScores));
       
     } catch (error) {
       console.error('Error al sincronizar con el backend:', error);
       setError(error.message);
       
-      // Si falla el backend, cargar desde AsyncStorage como respaldo
       try {
         const savedScoresString = await AsyncStorage.getItem('savedScores');
         if (savedScoresString) {
@@ -85,7 +81,6 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
     const score = savedScores[scoreIndex];
     
     try {
-      // Si tiene ID del backend, eliminar del backend
       if (score.id) {
         try {
           await deletePartitura(score.id);
@@ -95,7 +90,6 @@ const MyScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
         }
       }
       
-      // Recargar partituras desde el backend para sincronizar
       await loadSavedScores();
       
     } catch (error) {

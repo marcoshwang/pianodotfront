@@ -1,6 +1,5 @@
 import 'react-native-get-random-values';
 
-// Importar módulos nativos de Amplify de forma condicional
 try {
   require('@aws-amplify/react-native');
 } catch (error) {
@@ -85,10 +84,9 @@ import { getDynamicStyles } from './src/styles/appStyles';
 
 const Stack = createNativeStackNavigator();
 
-// Referencia de navegación global
 export const navigationRef = React.createRef();
 
-// DEEP LINK HANDLER - MANEJO ROBUSTO DE OAUTH
+// DEEP LINK HANDLER
 
 // Estado global para evitar procesamiento duplicado
 const oauthState = {
@@ -116,7 +114,7 @@ const validateOAuthCallback = (url) => {
     
     const code = urlObj.searchParams.get('code');
     if (!code) {
-      return null; // No es callback de OAuth
+      return null;
     }
     
     if (code.length < 10 || code.length > 500) {
@@ -182,21 +180,16 @@ const navigateToHome = async (maxWaitMs = 5000) => {
 // Procesar callback de OAuth
 const processOAuthCallback = async (url) => {
   
-  // Validar callback
   const callbackData = validateOAuthCallback(url);
   if (!callbackData) {
     return;
   }
 
-  
-  // Esperar que Amplify procese el código de autorización
   await new Promise(r => setTimeout(r, 500));
   
   try {
-    // Obtener sesión con reintentos
     const session = await fetchSessionWithRetry();
     
-    // Obtener usuario
     const { getCurrentUser } = await import('aws-amplify/auth');
     const cognitoUser = await getCurrentUser();
     
@@ -204,12 +197,9 @@ const processOAuthCallback = async (url) => {
       throw new Error('No se pudo obtener el usuario');
     }
        
-    // Usar saveAuthData
     const { saveAuthData } = await import('./auth/cognitoAuth');
     await saveAuthData(cognitoUser);
     
-    
-    // Recargar configuraciones desde el backend
     try {
       const { getUserConfig } = await import('./services/pianodotApi');
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
@@ -268,12 +258,10 @@ const useDeepLinkHandler = () => {
     const handleDeepLink = async (event) => {
       const url = typeof event === 'string' ? event : event.url;
       
-      // Validaciones iniciales
       if (!url || !url.startsWith('pianodot://')) {
         return;
       }
-      
-      // Evitar procesamiento duplicado
+
       if (oauthState.isProcessing) {
         return;
       }
@@ -282,12 +270,11 @@ const useDeepLinkHandler = () => {
         return;
       }
       
-      // Verificar si es callback de OAuth
       let isOAuthCallback = false;
       try {
         const callbackData = validateOAuthCallback(url);
         if (!callbackData) {
-          return; // No es callback de OAuth
+          return;
         }
         isOAuthCallback = true;
       } catch (error) {
@@ -300,11 +287,8 @@ const useDeepLinkHandler = () => {
         return;
       }
       
-      // Marcar como procesando
       oauthState.isProcessing = true;
       oauthState.lastProcessedUrl = url;
-      
-      // Timeout de 30 segundos
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout de autenticación')), 30000);
       });
@@ -314,13 +298,11 @@ const useDeepLinkHandler = () => {
           processOAuthCallback(url),
           timeoutPromise,
         ]);
-        
-        // Marcar como procesado exitosamente
+
         oauthState.hasProcessed = true;
       } catch (error) {
         console.error('Error en callback de OAuth:', error.message);
-        
-        // Usar clearAuthData
+
         try {
           const { clearAuthData } = await import('./auth/cognitoAuth');
           await clearAuthData();
@@ -328,7 +310,6 @@ const useDeepLinkHandler = () => {
           console.error('Error limpiando datos:', cleanupError);
         }
         
-        // Mostrar error al usuario
         Alert.alert(
           'Error de autenticación',
           error.message === 'Timeout de autenticación'
@@ -336,8 +317,6 @@ const useDeepLinkHandler = () => {
             : 'No se pudo completar el inicio de sesión. Por favor, intenta de nuevo.',
           [{ text: 'OK' }]
         );
-        
-        // Resetear estado para permitir reintento
         oauthState.hasProcessed = false;
         oauthState.lastProcessedUrl = null;
       } finally {
@@ -353,7 +332,6 @@ const useDeepLinkHandler = () => {
         if (url) {
           await handleDeepLink(url);
         }
-        // Registrar listener DESPUÉS
         subscription = Linking.addEventListener('url', handleDeepLink);
       })
       .catch((error) => {
@@ -459,11 +437,8 @@ export default function App() {
   React.useEffect(() => {
     const loadAuth = async () => {
       try {
-        // Importar funciones correctas
         const { isAuthenticated, saveAuthData } = await import('./auth/cognitoAuth');
         const { getCurrentUser, fetchAuthSession } = await import('aws-amplify/auth');
-        
-        // Verificar si hay una sesión activa (OAuth callback)
         try {
           const session = await fetchAuthSession();
           
@@ -476,10 +451,8 @@ export default function App() {
         } catch (oauthError) {
         }
         
-        // Verificar si el usuario está autenticado
         const hasAuth = await isAuthenticated();
-          
-        // Navegación automática si tiene sesión
+
         if (hasAuth) {
           setTimeout(() => {
             if (navigationRef.current?.isReady()) {
@@ -488,7 +461,6 @@ export default function App() {
                 routes: [{ name: 'Home' }],
               });
             } else {
-              // Reintentar después de un momento
               setTimeout(() => {
                 if (navigationRef.current?.isReady()) {
                   navigationRef.current.reset({
@@ -501,7 +473,6 @@ export default function App() {
           }, 100);
         }
       } catch (error) {
-        // Limpiar datos si hay error
         try {
           const { clearAuthData } = await import('./auth/cognitoAuth');
           await clearAuthData();

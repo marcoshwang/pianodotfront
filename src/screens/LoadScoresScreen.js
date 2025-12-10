@@ -17,26 +17,15 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   
-  //Obtener función para limpiar práctica
   const { clearPractice, stopAudio, clearPreloadedSounds, clearAudioCache } = usePractice();
 
-  //Limpieza más robusta de audio y práctica
   useEffect(() => {
     const cleanupPreviousPractice = async () => {
       try {
-        // 1. Detener cualquier audio que esté sonando (múltiples intentos)
         await stopAudio();
-        
-        // 2. Esperar un momento para asegurar que el audio se detenga
         await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // 3. Limpiar audios precargados
         await clearPreloadedSounds();
-        
-        // 4. Limpiar el estado de la práctica (sin borrar progreso guardado)
         await clearPractice(false);
-        
-        // 5. Limpiar cache de audio del contexto
         clearAudioCache();
 
       } catch (error) {
@@ -52,9 +41,9 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
     
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*', // Permite seleccionar cualquier tipo de archivo
+        type: '*/*',
         copyToCacheDirectory: true,
-        multiple: false, // Solo permite seleccionar un archivo
+        multiple: false,
       });
 
       if (!result.canceled && result.assets) {
@@ -79,14 +68,8 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
       try {
         setUploading(true);
         setUploadError(null);
-        
-        // Obtener el primer archivo seleccionado
         const file = selectedFiles[0];
-
-        // Subir al backend directamente
         const uploadedPartitura = await uploadPartitura(file);
-        
-        // También guardar localmente como respaldo
         const existingFilesString = await AsyncStorage.getItem('savedScores');
         const existingFiles = existingFilesString ? JSON.parse(existingFilesString) : [];
         const updatedFiles = [...existingFiles, file];
@@ -94,7 +77,6 @@ const LoadScoresScreen = ({ navigation, styles, triggerVibration, stop }) => {
         
         setSelectedFiles([]);
         
-        // Limpieza final antes de navegar
         await stopAudio();
         await clearPreloadedSounds();
         clearAudioCache();

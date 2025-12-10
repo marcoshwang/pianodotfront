@@ -22,9 +22,7 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
     navigation.goBack();
   };
 
-  /**
-   * Mapear valores del frontend al backend
-   */
+
   const mapFrontendToBackend = (field, value) => {
     if (field === 'fontSize') {
       const fontSizeMap = {
@@ -41,12 +39,9 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
     return {};
   };
 
-  /**
-   * Guardar configuración en el backend
-   */
+
   const saveSettingToBackend = async (field, value) => {
     try {
-      // Verificar autenticación
       const { getAuthToken } = await import('../../auth/cognitoAuth');
       const token = await getAuthToken();
 
@@ -58,13 +53,10 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
         });
         return false;
       }
-
-      // Construir payload
       const payload = mapFrontendToBackend(field, value);
 
       await saveUserConfig(payload);
 
-      // Remover de pendientes
       setPendingSaves(prev => {
         const newSet = new Set(prev);
         newSet.delete(field);
@@ -75,14 +67,12 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
     } catch (error) {
       console.error('Error guardando configuración:', error);
       
-      // Remover de pendientes
       setPendingSaves(prev => {
         const newSet = new Set(prev);
         newSet.delete(field);
         return newSet;
       });
-      
-      // Solo mostrar alerta si no es error de autenticación
+
       if (error.status !== 401) {
         Alert.alert(
           'Error al guardar',
@@ -95,24 +85,17 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
     }
   };
 
-  /**
-   * Manejar cambio de configuración con debouncing
-   */
   const handleSettingChange = (setting, value) => {
     triggerVibration();
     
-    // Actualizar UI inmediatamente (optimistic update)
     updateSetting(setting, value);
-    
-    // Marcar como pendiente de guardar
+
     setPendingSaves(prev => new Set(prev).add(setting));
-    
-    // Cancelar timeout anterior si existe
+
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }
     
-    // Esperar 800ms antes de guardar (debouncing)
     const timeout = setTimeout(() => {
       saveSettingToBackend(setting, value);
     }, 800);
@@ -122,10 +105,9 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
 
   const handleLogout = async () => {
     if (isLoggingOut) {
-      return; // Prevenir múltiples clicks
+      return;
     }
 
-    // Si hay cambios pendientes, advertir
     if (pendingSaves.size > 0) {
       Alert.alert(
         'Cambios pendientes',
@@ -144,7 +126,6 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
       return;
     }
 
-    // Si no hay cambios pendientes, proceder directamente
     Alert.alert(
       'Cerrar Sesión',
       '¿Estás seguro de que quieres cerrar sesión?',
@@ -167,29 +148,25 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
       setIsLoggingOut(true);
       triggerVibration();
       
-      // Cancelar cualquier guardado pendiente
       if (saveTimeout) {
         clearTimeout(saveTimeout);
       }
       
-      // 1. Resetear configuraciones localmente (SIN sincronizar con backend)
+
       if (resetSettings) {
         try {
-          await resetSettings(true); // true = skipBackendSync
+          await resetSettings(true);
         } catch (resetError) {
         }
       }
-      
-      // 2. Limpiar todos los datos de autenticación (incluye signOut de Cognito)
+
       try {
         const { clearAllAuthData } = await import('../../auth/cognitoAuth');
         await clearAllAuthData();
       } catch (authError) {
         console.error('Error limpiando autenticación:', authError);
-        // Continuar de todas formas
       }
       
-      // 3. Navegar a Welcome (reset completo del stack)
       navigation.reset({
         index: 0,
         routes: [{ name: 'Welcome' }],

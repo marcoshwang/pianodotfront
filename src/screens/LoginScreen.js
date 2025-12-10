@@ -26,22 +26,14 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings, loa
     try {
       triggerVibration();
       setIsLoading(true);
-      
-      // 1. Login con Cognito
       const cognitoUser = await login(email, password);
-      
-      // 2. Guardar datos de autenticación
       await saveAuthData(cognitoUser);
       
-      // 3. Recargar configuraciones desde el backend
       if (loadSettings) {
         await loadSettings();
       }
-      
-      // 4. Navegar a Home
       stop();
-      
-      // Usar replace para evitar que el usuario vuelva al login con el botón back
+
       navigation.replace('Home');
       
     } catch (error) {

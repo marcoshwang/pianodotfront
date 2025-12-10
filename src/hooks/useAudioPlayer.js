@@ -20,15 +20,12 @@ export const useAudioPlayer = () => {
       });
     } catch (error) {
       console.error('Error configurando modo de audio:', error);
-      // Continuar sin configuración si falla
     }
   }, []);
 
   // Precargar audio
   const preloadAudio = useCallback(async (audioUrl, type = 'audio') => {
     try {
-      // Truncar URL para evitar logs muy largos (mostrar solo primeros 100 caracteres)
-      
       // Configurar modo de audio
       await configureAudioMode();
       
@@ -36,17 +33,16 @@ export const useAudioPlayer = () => {
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { 
-          shouldPlay: false, // No reproducir automáticamente
+          shouldPlay: false,
           isLooping: false,
           volume: 1.0,
           rate: 1.0,
           shouldCorrectPitch: false,
-          progressUpdateIntervalMillis: 500, // Actualizar cada 500ms
+          progressUpdateIntervalMillis: 500,
           androidImplementation: 'MediaPlayer'
         }
       );
 
-      // Guardar en el cache de sonidos precargados
       setPreloadedSounds(prev => ({
         ...prev,
         [type]: newSound
@@ -67,19 +63,15 @@ export const useAudioPlayer = () => {
         throw new Error(`Audio ${type} no está precargado`);
       }
 
-      // Limpiar cualquier callback previo antes de empezar
       preloadedSound.setOnPlaybackStatusUpdate(null);
       
-      // Detener y resetear el audio si estaba reproduciéndose
       try {
         const currentStatus = await preloadedSound.getStatusAsync();
         if (currentStatus.isLoaded && currentStatus.isPlaying) {
           await preloadedSound.stopAsync();
         }
-        // Resetear a posición 0 para asegurar que empiece desde el principio
         await preloadedSound.setPositionAsync(0);
       } catch (err) {
-        // Ignorar errores al resetear
       }
 
       setIsPlaying(true);
@@ -101,7 +93,7 @@ export const useAudioPlayer = () => {
 
         // Función para limpiar todo de forma segura
         const cleanup = () => {
-          if (callbackCleaned) return; // Ya se limpió, evitar múltiples limpiezas
+          if (callbackCleaned) return;
           callbackCleaned = true;
           
           if (timeoutId) {
@@ -109,38 +101,31 @@ export const useAudioPlayer = () => {
             timeoutId = null;
           }
           
-          // Limpiar callback de forma síncrona
           try {
             preloadedSound.setOnPlaybackStatusUpdate(null);
           } catch (err) {
-            // Ignorar errores al limpiar
           }
           
-          // Detener audio físicamente
           preloadedSound.stopAsync().catch(() => {});
           
           setIsPlaying(false);
         };
 
-        // Callback para monitorear el estado de reproducción
         preloadedSound.setOnPlaybackStatusUpdate((status) => {
-          // Verificación doble: hasFinished Y callbackCleaned
           if (hasFinished || callbackCleaned) {
-            return; // Ya terminó, ignorar TODAS las actualizaciones
+            return;
           }
 
           if (status.isLoaded) {
-            // Verificar si terminó
             if (status.didJustFinish) {
               hasFinished = true;
               console.log(`Audio ${type} terminado correctamente`);
               
               cleanup();
               resolve(true);
-              return; // Salir inmediatamente
+              return;
             }
             
-            // Log solo ocasionalmente para reducir spam (cada ~2 segundos)
             if (status.positionMillis % 2000 < 500) {
               console.log(`Reproduciendo ${type}:`, {
                 position: Math.round(status.positionMillis / 1000),
@@ -157,7 +142,6 @@ export const useAudioPlayer = () => {
           }
         });
 
-        //Timeout de seguridad aumentado a 2 minutos (120 segundos)
         timeoutId = setTimeout(() => {
           if (!hasFinished && !callbackCleaned) {
             hasFinished = true;
@@ -166,14 +150,12 @@ export const useAudioPlayer = () => {
             cleanup();
             resolve(true);
           }
-        }, 180000); // 180 segundos = 2 minutos
+        }, 180000);
 
-        // Iniciar reproducción DESPUÉS de configurar el callback
         preloadedSound.playAsync().then(async () => {
           setSound(preloadedSound);
           soundRef.current = preloadedSound;
           
-          // Verificar que realmente esté reproduciéndose
           const playStatus = await preloadedSound.getStatusAsync();
           console.log(`Estado después de playAsync ${type}:`, {
             isLoaded: playStatus.isLoaded,
@@ -201,12 +183,11 @@ export const useAudioPlayer = () => {
     }
   }, [preloadedSounds]);
 
-  // Reproducir audio desde URL (método original como fallback)
+
   const playAudioFromUrl = useCallback(async (audioUrl, type = 'audio') => {
     try {
       console.log(`Reproduciendo audio ${type} desde URL: ${audioUrl}`);
       
-      // Detener audio anterior si existe
       if (soundRef.current) {
         try {
           await soundRef.current.stopAsync();
@@ -216,13 +197,11 @@ export const useAudioPlayer = () => {
         }
       }
 
-      // Configurar modo de audio
       await configureAudioMode();
       
       setIsPlaying(true);
       setError(null);
 
-      // Crear objeto de audio
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { 
@@ -240,7 +219,6 @@ export const useAudioPlayer = () => {
       soundRef.current = newSound;
       console.log(`Audio ${type} reproduciéndose...`);
 
-      // Esperar a que termine la reproducción usando setOnPlaybackStatusUpdate
       return new Promise((resolve, reject) => {
         let hasFinished = false;
         let timeoutId = null;
@@ -271,7 +249,6 @@ export const useAudioPlayer = () => {
           }
         });
 
-        // Timeout de seguridad de 2 minutos
         timeoutId = setTimeout(() => {
           if (!hasFinished) {
             hasFinished = true;
@@ -292,7 +269,6 @@ export const useAudioPlayer = () => {
     }
   }, [configureAudioMode]);
 
-  //Detener audio de forma más robusta
   const stopAudio = useCallback(async () => {
     try {
       console.log('Deteniendo audio...');
@@ -300,10 +276,8 @@ export const useAudioPlayer = () => {
       // 1. Detener audio principal si existe
       if (soundRef.current) {
         try {
-          // Verificar estado antes de detener
           const status = await soundRef.current.getStatusAsync();
           if (status.isLoaded) {
-            // Limpiar callbacks antes de detener
             soundRef.current.setOnPlaybackStatusUpdate(null);
             if (status.isPlaying) {
               await soundRef.current.stopAsync();
@@ -311,7 +285,6 @@ export const useAudioPlayer = () => {
             await soundRef.current.unloadAsync();
           }
         } catch (err) {
-          // Si el sonido ya fue descargado o no está cargado, ignorar el error
           if (!err.message?.includes('not loaded') && !err.message?.includes('Cannot complete')) {
             console.log('Error deteniendo audio principal:', err);
           }
@@ -321,27 +294,19 @@ export const useAudioPlayer = () => {
       }
       
       // 2. Detener solo los audios precargados que están reproduciéndose
-      // NO descargar los audios precargados que no están reproduciéndose
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
           try {
-            // Verificar estado antes de detener
             const status = await sound.getStatusAsync();
             if (status.isLoaded) {
-              // Limpiar callback siempre
               sound.setOnPlaybackStatusUpdate(null);
-              
-              // Solo detener si está reproduciéndose
+
               if (status.isPlaying) {
                 await sound.stopAsync();
-                // Resetear posición para que esté listo para la próxima reproducción
                 await sound.setPositionAsync(0).catch(() => {});
               }
-              // IMPORTANTE: NO descargar (unloadAsync) los audios precargados
-              // para que estén disponibles para la siguiente reproducción
             }
           } catch (err) {
-            // Si el sonido ya fue descargado o no está cargado, ignorar el error
             if (!err.message?.includes('not loaded') && !err.message?.includes('Cannot complete')) {
               console.log(`Error deteniendo audio precargado ${type}:`, err);
             }
@@ -355,7 +320,6 @@ export const useAudioPlayer = () => {
       
       console.log('Audio detenido completamente');
     } catch (error) {
-      // Si es un error de "not loaded", es normal y lo ignoramos
       if (!error.message?.includes('not loaded') && !error.message?.includes('Cannot complete')) {
         console.error('Error deteniendo audio:', error);
       }
@@ -369,15 +333,12 @@ export const useAudioPlayer = () => {
       for (const [type, sound] of Object.entries(preloadedSounds)) {
         if (sound) {
           try {
-            // Verificar estado antes de descargar
             const status = await sound.getStatusAsync();
             if (status.isLoaded) {
-              // Limpiar callback antes de descargar
               sound.setOnPlaybackStatusUpdate(null);
               await sound.unloadAsync();
             }
           } catch (err) {
-            // Si el sonido ya fue descargado o no está cargado, ignorar el error
             if (!err.message?.includes('not loaded') && !err.message?.includes('Cannot complete')) {
               console.log(`Error limpiando audio ${type}:`, err);
             }
@@ -387,17 +348,15 @@ export const useAudioPlayer = () => {
       setPreloadedSounds({});
       console.log('Audios precargados limpiados');
     } catch (error) {
-      // Si es un error de "not loaded", es normal y lo ignoramos
       if (!error.message?.includes('not loaded') && !error.message?.includes('Cannot complete')) {
         console.error('Error limpiando audios precargados:', error);
       }
     }
   }, [preloadedSounds]);
 
-  // Limpiar recursos al desmontar - SOLO UNA VEZ
+  // Limpiar recursos al desmontar
   useEffect(() => {
     return () => {
-      // Usar soundRef en lugar de sound para evitar dependencias
       if (soundRef.current) {
         soundRef.current.setOnPlaybackStatusUpdate(null);
         soundRef.current.unloadAsync().catch(err => {
@@ -405,7 +364,7 @@ export const useAudioPlayer = () => {
         });
       }
     };
-  }, []); // Array vacío - solo se ejecuta al montar/desmontar
+  }, []);
 
   return {
     playAudioFromUrl,

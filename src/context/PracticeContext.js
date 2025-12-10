@@ -57,7 +57,6 @@ export const PracticeProvider = ({ children }) => {
       };
       
       await AsyncStorage.setItem(progressKey, JSON.stringify(progressData));
-      // Log resumido sin URLs largas
       const summary = {
         partituraId,
         currentCompas: progressData.currentCompas,
@@ -87,7 +86,7 @@ export const PracticeProvider = ({ children }) => {
     }
   }, []);
 
-  // Función para obtener resumen de compases (progreso real del backend)
+  // Función para obtener resumen de compases
   const getProgressSummary = useCallback(async (partituraId) => {
     try {
       const resumen = await getCompasesResumen(partituraId);
@@ -162,7 +161,7 @@ export const PracticeProvider = ({ children }) => {
         setCurrentCompas(currentPractice.state?.last_compas || currentPractice.current_compas);
         return currentPractice;
       } else {
-        return await startNewPractice(partituraId, false); // false = cargar progreso si existe
+        return await startNewPractice(partituraId, false);
       }
     } catch (err) {
       setError(err.message);
@@ -186,7 +185,6 @@ export const PracticeProvider = ({ children }) => {
       const updatedPractice = await getNextCompas(currentPartituraId);
       setCurrentPractice(updatedPractice);
       setCurrentCompas(updatedPractice.state.last_compas);
-      // El progreso se guarda automáticamente por el useEffect
       return updatedPractice;
     } catch (err) {
       console.error('Error en nextCompas:', err);
@@ -211,7 +209,6 @@ export const PracticeProvider = ({ children }) => {
       const updatedPractice = await getPrevCompas(currentPartituraId);
       setCurrentPractice(updatedPractice);
       setCurrentCompas(updatedPractice.state.last_compas);
-      // El progreso se guarda automáticamente por el useEffect
       return updatedPractice;
     } catch (err) {
       console.error('Error en prevCompas:', err);
@@ -235,7 +232,6 @@ export const PracticeProvider = ({ children }) => {
       const updatedPractice = await repeatCompas(currentPartituraId);
       setCurrentPractice(updatedPractice);
       setCurrentCompas(updatedPractice.state.last_compas);
-      // El progreso se guarda automáticamente por el useEffect
       return updatedPractice;
     } catch (err) {
       console.error('Error en repeatCurrentCompas:', err);
@@ -257,7 +253,6 @@ export const PracticeProvider = ({ children }) => {
 
     const cacheKey = `${id}_${compas}`;
 
-    // Verificar cache
     if (audioCache[cacheKey]) {
       return audioCache[cacheKey];
     }
@@ -266,13 +261,10 @@ export const PracticeProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      // Llamar al endpoint POST /practice/{id}/start para generar los archivos
       const practiceResponse = await startPractice(id);
 
-      // Obtener audio de instrucciones TTS usando función centralizada
       const ttsBlob = await getTTSAudio(id, compas);
 
-      // Obtener audio del piano usando función centralizada
       const pianoBlob = await getPianoAudio(id, compas);
 
       const audioData = {
@@ -282,7 +274,6 @@ export const PracticeProvider = ({ children }) => {
         partituraId: id
       };
 
-      // Guardar en cache
       setAudioCache(prev => ({
         ...prev,
         [cacheKey]: audioData
@@ -326,7 +317,6 @@ export const PracticeProvider = ({ children }) => {
     try {
       await clearProgress(partituraId);
       
-      // Si es la partitura actual, reiniciar también el estado
       if (currentPartituraId === partituraId) {
         const initialPractice = {
           partitura_id: partituraId,
@@ -346,7 +336,6 @@ export const PracticeProvider = ({ children }) => {
   }, [currentPartituraId, clearProgress]);
 
   const value = {
-    // Estados
     currentPractice,
     currentCompas,
     isLoading,
@@ -356,14 +345,12 @@ export const PracticeProvider = ({ children }) => {
     sound,
     currentPartituraId,
 
-    // Funciones de práctica
     startNewPractice,
     continuePractice,
     nextCompas,
     prevCompas,
     repeatCurrentCompas,
     
-    // Funciones de audio
     getCompasAudio,
     playAudioFromUrl,
     playPreloadedAudio,
@@ -371,7 +358,6 @@ export const PracticeProvider = ({ children }) => {
     stopAudio,
     clearPreloadedSounds,
 
-    // Funciones de limpieza y progreso
     clearPractice,
     clearAudioCache,
     resetProgress,
@@ -379,10 +365,8 @@ export const PracticeProvider = ({ children }) => {
     getProgressSummary,
     saveProgress,
 
-    // Setters
     setPartituraId,
 
-    // Estados derivados
     hasActivePractice: !!currentPractice,
     isPracticeActive: !!currentPractice && !!currentCompas,
   };
