@@ -83,7 +83,7 @@ PianoDot es una aplicación móvil desarrollada con React Native y Expo que perm
    npm start
    ```
 
-## 📱 Scripts Disponibles
+## Scripts Disponibles
 
 - `npm start` - Inicia el servidor de desarrollo de Expo
 - `npm run android` - Ejecuta la app en Android
@@ -208,7 +208,7 @@ La aplicación se conecta a un backend FastAPI desplegado en AWS API Gateway:
 
 ## Plataformas Soportadas
 
-- ✅ Android
+- Android
 
 ## Desarrollo
 
