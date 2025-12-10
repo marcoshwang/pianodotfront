@@ -5,8 +5,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -34,6 +32,7 @@ const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }
     try {
       triggerVibration();
       setIsLoading(true);
+      
       const name = `${nombre} ${apellido}`.trim();
       const result = await register(email, password, name);
       
@@ -59,110 +58,110 @@ const RegisterScreen = ({ navigation, styles, triggerVibration, stop, settings }
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header con botón de volver */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleGoBack}
-              accessibilityLabel="Volver atrás"
-              accessibilityRole="button"
-              accessibilityHint="Regresar a la pantalla de login"
-            >
-              <Text style={styles.backButtonText}>VOLVER</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Header con botón de volver */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleGoBack}
+            disabled={isLoading}
+            accessibilityLabel="Volver atrás"
+            accessibilityRole="button"
+            accessibilityHint="Regresar a la pantalla de login"
+          >
+            <Text style={styles.backButtonText}>VOLVER</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Contenido principal */}
-          <View style={styles.registerContent}>
-            <Text style={styles.registerTitle}>
-              Crear Cuenta
-            </Text>
+        {/* Contenido principal */}
+        <View style={styles.registerContent}>
+          <Text style={styles.registerTitle}>
+            Crear Cuenta
+          </Text>
+          
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Nombre"
+              placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
+              value={nombre}
+              onChangeText={setNombre}
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              editable={!isLoading}
+              accessibilityLabel="Campo de nombre"
+              accessibilityHint="Ingresa tu nombre"
+            />
             
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Nombre"
-                placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
-                value={nombre}
-                onChangeText={setNombre}
-                autoCapitalize="words"
-                autoCorrect={false}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                accessibilityLabel="Campo de nombre"
-                accessibilityHint="Ingresa tu nombre"
-              />
-              
-              <TextInput
-                style={styles.textInput}
-                placeholder="Apellido"
-                placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
-                value={apellido}
-                onChangeText={setApellido}
-                autoCapitalize="words"
-                autoCorrect={false}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                accessibilityLabel="Campo de apellido"
-                accessibilityHint="Ingresa tu apellido"
-              />
-              
-              <TextInput
-                style={styles.textInput}
-                placeholder="Correo electrónico"
-                placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="default"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                accessibilityLabel="Campo de correo electrónico"
-                accessibilityHint="Ingresa tu correo electrónico"
-              />
-              
-              <TextInput
-                style={styles.textInput}
-                placeholder="Contraseña"
-                placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                returnKeyType="done"
-                accessibilityLabel="Campo de contraseña"
-                accessibilityHint="Ingresa tu contraseña"
-              />
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.registerButton, isLoading && { opacity: 0.7 }]}
-              onPress={handleRegister}
-              disabled={isLoading}
-              accessibilityLabel="Crear cuenta"
-              accessibilityRole="button"
-              accessibilityHint="Crear nueva cuenta con los datos ingresados"
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.registerButtonText}>ACEPTAR</Text>
-              )}
-            </TouchableOpacity>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Apellido"
+              placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
+              value={apellido}
+              onChangeText={setApellido}
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              editable={!isLoading}
+              accessibilityLabel="Campo de apellido"
+              accessibilityHint="Ingresa tu apellido"
+            />
+            
+            <TextInput
+              style={styles.textInput}
+              placeholder="Correo electrónico"
+              placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              editable={!isLoading}
+              accessibilityLabel="Campo de correo electrónico"
+              accessibilityHint="Ingresa tu correo electrónico"
+            />
+            
+            <TextInput
+              style={styles.textInput}
+              placeholder="Contraseña (mínimo 8 caracteres)"
+              placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={true}
+              returnKeyType="done"
+              onSubmitEditing={handleRegister}
+              editable={!isLoading}
+              accessibilityLabel="Campo de contraseña"
+              accessibilityHint="Ingresa tu contraseña"
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          <TouchableOpacity 
+            style={[styles.registerButton, isLoading && { opacity: 0.7 }]}
+            onPress={handleRegister}
+            disabled={isLoading}
+            accessibilityLabel="Crear cuenta"
+            accessibilityRole="button"
+            accessibilityHint="Crear nueva cuenta con los datos ingresados"
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.registerButtonText}>ACEPTAR</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };

@@ -4,10 +4,7 @@ import {
   Text,
   TouchableOpacity,
   SafeAreaView,
-  Image,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -30,17 +27,14 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings, loa
       triggerVibration();
       setIsLoading(true);
       
-      
       // 1. Login con Cognito
       const cognitoUser = await login(email, password);
       
       // 2. Guardar datos de autenticación
       await saveAuthData(cognitoUser);
-
       
       // 3. Recargar configuraciones desde el backend
       if (loadSettings) {
-
         await loadSettings();
       }
       
@@ -74,104 +68,98 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings, loa
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header con botón de volver */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleGoBack}
-              disabled={isLoading}
-              accessibilityLabel="Volver atrás"
-              accessibilityRole="button"
-              accessibilityHint="Regresar a la pantalla de autenticación"
-            >
-              <Text style={styles.backButtonText}>VOLVER</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Header con botón de volver */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleGoBack}
+            disabled={isLoading}
+            accessibilityLabel="Volver atrás"
+            accessibilityRole="button"
+            accessibilityHint="Regresar a la pantalla de autenticación"
+          >
+            <Text style={styles.backButtonText}>VOLVER</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Contenido principal */}
-          <View style={styles.loginContent}>
-            <Text style={styles.loginTitle}>
-              Iniciar Sesión
-            </Text>
+        {/* Contenido principal */}
+        <View style={styles.loginContent}>
+          <Text style={styles.loginTitle}>
+            Iniciar Sesión
+          </Text>
+          
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Correo electrónico"
+              placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              editable={!isLoading}
+              accessibilityLabel="Campo de correo electrónico"
+              accessibilityHint="Ingresa tu correo electrónico"
+            />
             
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Correo electrónico"
-                placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                editable={!isLoading}
-                accessibilityLabel="Campo de correo electrónico"
-                accessibilityHint="Ingresa tu correo electrónico"
-              />
-              
-              <TextInput
-                style={styles.textInput}
-                placeholder="Contraseña"
-                placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-                editable={!isLoading}
-                accessibilityLabel="Campo de contraseña"
-                accessibilityHint="Ingresa tu contraseña"
-              />
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && { opacity: 0.7 }]}
-              onPress={handleLogin}
-              disabled={isLoading}
-              accessibilityLabel="Iniciar sesión"
-              accessibilityRole="button"
-              accessibilityHint="Iniciar sesión con tu cuenta"
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
-              )}
-            </TouchableOpacity>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Contraseña"
+              placeholderTextColor={settings.contrast === 'whiteBlack' ? '#666666' : '#CCCCCC'}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={true}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              editable={!isLoading}
+              accessibilityLabel="Campo de contraseña"
+              accessibilityHint="Ingresa tu contraseña"
+            />
           </View>
 
-          {/* Sección de registro */}
-          <View style={styles.registerSection}>
-            <Text style={styles.registerText}>
-              ¿No tenés cuenta?
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.registerButton}
-              onPress={handleRegister}
-              disabled={isLoading}
-              accessibilityLabel="Registrarse"
-              accessibilityRole="button"
-              accessibilityHint="Crear una nueva cuenta"
+          <TouchableOpacity 
+            style={[styles.loginButton, isLoading && { opacity: 0.7 }]}
+            onPress={handleLogin}
+            disabled={isLoading}
+            accessibilityLabel="Iniciar sesión"
+            accessibilityRole="button"
+            accessibilityHint="Iniciar sesión con tu cuenta"
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Sección de registro */}
+        <View style={styles.registerSection}>
+          <Text style={styles.registerText}>
+            ¿No tenés cuenta?
+          </Text>
+          
+          <TouchableOpacity 
+            style={styles.registerButton}
+            onPress={handleRegister}
+            disabled={isLoading}
+            accessibilityLabel="Registrarse"
+            accessibilityRole="button"
+            accessibilityHint="Crear una nueva cuenta"
             >
-              <Text style={styles.registerButtonText}>REGISTRATE</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+            <Text style={styles.registerButtonText}>REGISTRATE</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
