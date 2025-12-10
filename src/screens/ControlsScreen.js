@@ -38,6 +38,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     hasActivePractice,
     currentPartituraId,
     setPartituraId,
+    clearPractice,
   } = usePractice();
 
   // Estados locales
@@ -63,33 +64,61 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
           return; // Ya se cargó o no hay partitura
         }
 
-        // Verificar si hay práctica activa para esta partitura
-        const hasPracticeForThisScore = hasActivePractice && currentPartituraId === score.id;
+        // Verificar si debe iniciar desde el principio
+        const startFromBeginning = await AsyncStorage.getItem(`start_from_beginning_${score.id}`);
         
-        if (!hasPracticeForThisScore) {
+        if (startFromBeginning === 'true') {
+          // Si debe iniciar desde el principio, limpiar progreso y práctica activa
+          console.log('🔄 Limpiando progreso y práctica activa para iniciar desde el principio...');
+          
+          // Limpiar progreso guardado
           try {
-            console.log('🔄 Verificando progreso guardado para partitura:', score.id);
-            
-            // Verificar si debe iniciar desde el principio
-            const startFromBeginning = await AsyncStorage.getItem(`start_from_beginning_${score.id}`);
-            
-            if (startFromBeginning !== 'true') {
+            const progressKey = `practice_progress_${score.id}`;
+            await AsyncStorage.removeItem(progressKey);
+            console.log('✅ Progreso guardado limpiado');
+          } catch (error) {
+            console.error('❌ Error limpiando progreso:', error);
+          }
+          
+          // Limpiar práctica activa si existe para esta partitura
+          // Pero NO crear una nueva - eso se hará cuando presione "Comenzar práctica"
+          if (hasActivePractice && currentPartituraId === score.id) {
+            // Usar clearPractice para limpiar el estado sin crear uno nuevo
+            try {
+              await clearPractice();
+              // Restablecer el ID de partitura después de limpiar (clearPractice lo elimina)
+              setPartituraId(score.id);
+              console.log('✅ Práctica activa limpiada');
+            } catch (error) {
+              console.error('❌ Error limpiando práctica activa:', error);
+            }
+          }
+          
+          // Marcar como cargado para evitar reintentos
+          // NO crear práctica activa - esperar a que el usuario presione "Comenzar práctica"
+          setHasLoadedProgress(true);
+          console.log('✅ Listo para iniciar desde el principio - esperando botón "Comenzar práctica"');
+        } else {
+          // Verificar si hay práctica activa para esta partitura
+          const hasPracticeForThisScore = hasActivePractice && currentPartituraId === score.id;
+          
+          if (!hasPracticeForThisScore) {
+            try {
+              console.log('🔄 Verificando progreso guardado para partitura:', score.id);
+              
               // Cargar progreso guardado automáticamente
               console.log('📂 Cargando progreso guardado automáticamente...');
               await startNewPractice(score.id, false); // false = cargar progreso
               setHasLoadedProgress(true);
               console.log('✅ Progreso cargado automáticamente');
-            } else {
-              // Si debe iniciar desde el principio, marcar como cargado para evitar reintentos
-              setHasLoadedProgress(true);
+            } catch (error) {
+              console.error('❌ Error cargando progreso automáticamente:', error);
+              // No mostrar error al usuario, solo loguear
             }
-          } catch (error) {
-            console.error('❌ Error cargando progreso automáticamente:', error);
-            // No mostrar error al usuario, solo loguear
+          } else {
+            // Ya hay práctica activa para esta partitura
+            setHasLoadedProgress(true);
           }
-        } else {
-          // Ya hay práctica activa para esta partitura
-          setHasLoadedProgress(true);
         }
       };
 
