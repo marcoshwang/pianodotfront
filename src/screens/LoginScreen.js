@@ -30,32 +30,27 @@ const LoginScreen = ({ navigation, styles, triggerVibration, stop, settings, loa
       triggerVibration();
       setIsLoading(true);
       
-      console.log('🔐 Intentando login con Cognito...');
       
       // 1. Login con Cognito
       const cognitoUser = await login(email, password);
-      console.log('✅ Login con Cognito exitoso');
       
       // 2. Guardar datos de autenticación
       await saveAuthData(cognitoUser);
-      console.log('✅ Datos de autenticación guardados');
+
       
       // 3. Recargar configuraciones desde el backend
       if (loadSettings) {
-        console.log('🔄 Recargando configuraciones del usuario...');
+
         await loadSettings();
-        console.log('✅ Configuraciones recargadas');
       }
       
       // 4. Navegar a Home
-      console.log('✅ Navegando a Home');
       stop();
       
       // Usar replace para evitar que el usuario vuelva al login con el botón back
       navigation.replace('Home');
       
     } catch (error) {
-      console.error('❌ Error en login:', error);
       Alert.alert(
         'Error de autenticación',
         error.message || 'No se pudo iniciar sesión. Verifica tus credenciales.'

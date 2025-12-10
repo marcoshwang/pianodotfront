@@ -73,7 +73,6 @@ export const getAuthToken = async () => {
  * @returns {string|null}
  */
 export const getAuthTokenSync = () => {
-  console.warn('Usando getAuthTokenSync - esto no es ideal');
   return null;
 };
 
