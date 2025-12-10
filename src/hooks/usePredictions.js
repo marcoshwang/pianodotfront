@@ -53,7 +53,6 @@ export const usePredictions = (partituraId) => {
   const startPolling = useCallback(() => {
     if (isPolling) return;
     
-    console.log('Iniciando polling para predicciones...');
     setIsPolling(true);
     
     const pollInterval = setInterval(async () => {
@@ -62,7 +61,6 @@ export const usePredictions = (partituraId) => {
         
         // Si ya no está procesando, detener polling
         if (details.status !== 'pending') {
-          console.log('Procesamiento completado, deteniendo polling');
           clearInterval(pollInterval);
           setIsPolling(false);
           
@@ -82,14 +80,12 @@ export const usePredictions = (partituraId) => {
     setTimeout(() => {
       clearInterval(pollInterval);
       setIsPolling(false);
-      console.log('Polling timeout después de 2 minutos');
     }, 120000);
   }, [isPolling, fetchPartituraDetails, fetchPredictions]);
 
   // Función para refrescar datos
   const refreshData = useCallback(async () => {
     try {
-      console.log('Refrescando datos de partitura...');
       const details = await fetchPartituraDetails();
       
       // Si está listo, obtener predicciones
@@ -109,14 +105,12 @@ export const usePredictions = (partituraId) => {
     
     const loadInitialData = async () => {
       try {
-        console.log('Cargando datos iniciales de partitura...');
         const details = await fetchPartituraDetails();
         
         // Si está listo, obtener predicciones
         if (details.status === 'ready') {
           await fetchPredictions();
         } else if (details.status === 'pending') {
-          console.log('Partitura procesándose, iniciando polling...');
           startPolling();
         }
       } catch (err) {

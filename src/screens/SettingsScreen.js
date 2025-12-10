@@ -51,7 +51,6 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
       const token = await getAuthToken();
 
       if (!token) {
-        console.warn('⚠️ No hay sesión activa, no se guardará en backend');
         setPendingSaves(prev => {
           const newSet = new Set(prev);
           newSet.delete(field);

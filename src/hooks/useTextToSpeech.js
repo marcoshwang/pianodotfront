@@ -47,7 +47,6 @@ export const useTextToSpeech = () => {
     console.log('Speaking:', text.substring(0, 100) + '...');
     // Asegurar que el volumen estándar siempre tenga prioridad
     const finalOptions = { ...defaultOptions, ...options, volume: STANDARD_VOLUME };
-    console.log('🔊 Volumen normal aplicado:', finalOptions.volume, '(balanceado con TalkBack)');
     // Usar setTimeout con 0 para dar prioridad al audio introductorio
     setTimeout(() => {
       Speech.speak(text, finalOptions);
@@ -56,8 +55,6 @@ export const useTextToSpeech = () => {
 
   // Función específica para audio introductorio con máxima prioridad
   const speakIntro = useCallback((text, options = {}) => {
-    console.log('=== INICIANDO AUDIO INTRODUCTORIO ===');
-    
     // Detener cualquier speech anterior
     Speech.stop();
     

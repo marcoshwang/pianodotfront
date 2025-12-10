@@ -46,7 +46,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     stopAudioRef.current = stopAudio;
   }, [stopAudio]);
 
-  // ✅ Mapeo de notas a imágenes según MANO (MD/MI)
   const getKeyImageForNote = useCallback((note, mano) => {
     const noteMap = {
       // Mano derecha (MD)
@@ -78,20 +77,16 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       'MI_B': require('../../img/tecladotocado/mitecladosi.png'),
     };
     
-    // Construir la clave: "MD_C", "MI_G", etc.
     const key = `${mano}_${note?.toUpperCase()}`;
     return noteMap[key] || null;
   }, []);
 
-  // ✅ Función para reproducir ambos audios
   const reproduceAudios = useCallback(async () => {
     if (isNavigatingAwayRef.current || !isMountedRef.current) {
-      console.log('🚫 Navegando fuera o desmontado, cancelando reproducción');
       return;
     }
 
     if (hasPlayedRef.current) {
-      console.log('🎵 Audio ya reproducido para este timestamp');
       return;
     }
     
@@ -102,35 +97,24 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       setCurrentKeyImage(null);
       processedEventsRef.current.clear();
       
-      // NO establecer audioStartTime aquí - se establecerá cuando comience el TTS
-      console.log('🎵 Reproduciendo Piano...');
       try {
         await playPreloadedAudio('Piano');
       } catch (error) {
-        console.log('⚠️ Fallback a playAudioFromUrl para Piano');
         await playAudioFromUrl(pianoUrl, 'Piano');
       }
       
       if (!isMountedRef.current || isNavigatingAwayRef.current) return;
       
-      // ⏰ Establecer tiempo de inicio CUANDO COMIENZA EL TTS (después del piano)
       const startTime = Date.now();
       setAudioStartTime(startTime);
-      console.log('⏰ Inicio de timeline (TTS) - Timestamp:', startTime);
-      
-      console.log('🎵 Reproduciendo TTS...');
       try {
         await playPreloadedAudio('TTS');
-        console.log('✅ TTS terminado de reproducirse');
       } catch (error) {
-        console.log('⚠️ Fallback a playAudioFromUrl para TTS');
         await playAudioFromUrl(ttsUrl, 'TTS');
-        console.log('✅ TTS terminado de reproducirse (desde URL)');
       }
       
       // Detener el tracking del timeline cuando termine el TTS
       if (timelineCheckIntervalRef.current) {
-        console.log('⏹️ TTS terminado, deteniendo tracking de timeline');
         clearInterval(timelineCheckIntervalRef.current);
         timelineCheckIntervalRef.current = null;
       }
@@ -141,14 +125,9 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       
       // Limpiar imagen de tecla cuando termina todo
       setCurrentKeyImage(null);
-      
-      // NO llamar a stopAudio() aquí porque descarga los audios precargados
-      // Los audios ya terminaron naturalmente (se detuvieron en playPreloadedAudio)
-      // stopAudio() se llamará cuando el usuario navegue fuera o presione un botón
-      
-      console.log('✅ Audios reproducidos correctamente');
+
     } catch (error) {
-      console.error('❌ Error reproduciendo audios:', error);
+      console.error('Error reproduciendo audios:', error);
     } finally {
       if (isMountedRef.current) {
         setIsReproducing(false);
@@ -156,16 +135,14 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     }
   }, [playPreloadedAudio, playAudioFromUrl, pianoUrl, ttsUrl]);
 
-  // ✅ Reproducir cuando cambia el timestamp
+  //Reproducir cuando cambia el timestamp
   useEffect(() => {
     if (playAudio && playTimestamp && lastTimestampRef.current !== playTimestamp) {
-      console.log('🎬 Nuevo timestamp detectado:', playTimestamp);
       lastTimestampRef.current = playTimestamp;
       hasPlayedRef.current = false;
       
       // Detener cualquier reproducción anterior antes de iniciar nueva
       if (isReproducingRef.current) {
-        console.log('🛑 Deteniendo reproducción anterior antes de iniciar nueva');
         stopAudioRef.current().catch(() => {});
       }
       
@@ -181,15 +158,12 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     }
   }, [playAudio, playTimestamp]); // Removido reproduceAudios de dependencias para evitar loops
 
-  // ✅ Obtener timeline del compás actual
   const fetchTimeline = useCallback(async () => {
     if (!score?.id || !currentCompas) {
-      console.log('⚠️ No hay score.id o currentCompas');
       return;
     }
 
     try {
-      console.log('📡 Obteniendo timeline para compás:', currentCompas);
       const timelineData = await getTimeline(score.id, currentCompas);
       
       // Log resumido del timeline
@@ -197,11 +171,11 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       const maxTimestamp = timelineData?.timeline?.length > 0 
         ? Math.max(...timelineData.timeline.map(e => e.timestamp_ms))
         : 0;
-      console.log(`✅ Timeline obtenido - Eventos: ${eventCount} | Duración: ${Math.round(maxTimestamp / 1000)}s`);
+      console.log(`Timeline obtenido - Eventos: ${eventCount} | Duración: ${Math.round(maxTimestamp / 1000)}s`);
       
       setTimeline(timelineData);
     } catch (error) {
-      console.error('❌ Error obteniendo timeline:', error);
+      console.error('Error obteniendo timeline:', error);
       setTimeline(null);
     }
   }, [score?.id, currentCompas]);
@@ -212,17 +186,16 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     }
   }, [score?.id, currentCompas, fetchTimeline]);
 
-  // ✅ Limpiar estado cuando cambia el compás o el timeline
+  //Limpiar estado cuando cambia el compás o el timeline
   useEffect(() => {
     // Resetear eventos procesados y estado visual cuando cambia el timeline
-    console.log('🔄 Timeline cambiado, limpiando estado de eventos procesados');
     processedEventsRef.current.clear();
     setCurrentKeyImage(null);
     setAudioStartTime(null);
     hasPlayedRef.current = false;
   }, [timeline, currentCompas]);
 
-  // ✅ FUNCIÓN PRINCIPAL: Verificar eventos del timeline y mostrar teclas
+
   const checkTimelineEvents = useCallback(() => {
     if (!timeline?.timeline || !audioStartTime) {
       return;
@@ -237,7 +210,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     // Si ya pasó la duración del timeline, detener el tracking
     if (elapsedTimeMs > maxTimestamp + bufferMs) {
       if (timelineCheckIntervalRef.current) {
-        console.log('⏹️ Timeline completado, deteniendo tracking');
         clearInterval(timelineCheckIntervalRef.current);
         timelineCheckIntervalRef.current = null;
       }
@@ -270,7 +242,7 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       const note = event.pitch?.toUpperCase();
       const mano = event.mano?.toUpperCase(); // MD o MI
       
-      console.log('🎹 NOTA DETECTADA:', {
+      console.log('NOTA DETECTADA:', {
         nota: note,
         mano: mano,
         timestamp_evento: event.timestamp_ms,
@@ -282,7 +254,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
         // Validar que la nota sea válida (puede incluir # o b)
         const validNotePattern = /^[A-G](#|b|)?$/;
         if (!validNotePattern.test(note)) {
-          console.warn(`⚠️ Nota inválida: ${note}`);
           return;
         }
 
@@ -290,34 +261,26 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
           const keyImage = getKeyImageForNote(note, mano);
           
           if (keyImage) {
-            console.log(`✅ Mostrando tecla ${mano}: ${note}`);
             // Validar que la imagen sea válida antes de establecerla
             if (typeof keyImage === 'number' || (keyImage && keyImage.uri)) {
               setCurrentKeyImage(keyImage);
-            } else {
-              console.warn(`⚠️ Imagen inválida para ${mano}_${note}:`, keyImage);
-            }
-          } else {
-            console.warn(`⚠️ No hay imagen mapeada para ${mano}_${note}`);
-          }
+            } 
+          } 
         } catch (error) {
-          console.error(`❌ Error obteniendo imagen para ${mano}_${note}:`, error.message || error);
+          console.error(`Error obteniendo imagen para ${mano}_${note}:`, error.message || error);
         }
       }
     }
   }, [timeline, audioStartTime, getKeyImageForNote]);
 
-  // ✅ Intervalo para verificar timeline (cada 50ms para precisión)
+  //Intervalo para verificar timeline (cada 50ms para precisión)
   useEffect(() => {
     if (audioStartTime && timeline) {
-      console.log('▶️ Iniciando tracking de timeline');
-      
       timelineCheckIntervalRef.current = setInterval(() => {
         checkTimelineEvents();
       }, 50);
     } else {
       if (timelineCheckIntervalRef.current) {
-        console.log('⏹️ Deteniendo tracking de timeline');
         clearInterval(timelineCheckIntervalRef.current);
         timelineCheckIntervalRef.current = null;
       }
@@ -331,18 +294,14 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     };
   }, [audioStartTime, timeline, checkTimelineEvents]);
 
-  // ✅ Limpieza al desmontar y manejo de navegación
   useEffect(() => {
     isMountedRef.current = true;
     isNavigatingAwayRef.current = false;
-    console.log('🎬 PianoScreen montado');
 
     const unsubscribeBlur = navigation.addListener('blur', () => {
-      console.log('👋 Pantalla perdió foco');
       isNavigatingAwayRef.current = true;
       
       if (isPlayingRef.current || isReproducingRef.current) {
-        console.log('🛑 Deteniendo audio por blur');
         stopAudioRef.current();
       }
       
@@ -356,12 +315,10 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     });
 
     const unsubscribeFocus = navigation.addListener('focus', () => {
-      console.log('👁️ Pantalla recuperó foco');
       isNavigatingAwayRef.current = false;
     });
 
     return () => {
-      console.log('🧹 PianoScreen desmontando');
       isMountedRef.current = false;
       isNavigatingAwayRef.current = true;
       
@@ -386,7 +343,6 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
     isNavigatingAwayRef.current = true;
     
     if (isPlaying || isReproducing) {
-      console.log('🛑 Deteniendo audio...');
       await stopAudio();
       setIsReproducing(false);
     }

@@ -65,7 +65,6 @@ export const PracticeProvider = ({ children }) => {
         hasPractice: !!practice,
         hasAudioUrls: !!(practice?.audio_piano && practice?.audio_tts)
       };
-      console.log(`✅ Progreso guardado - Partitura: ${partituraId.substring(0, 8)}... | Compás: ${progressData.currentCompas}`);
     } catch (err) {
       console.error('Error guardando progreso:', err);
     }
@@ -79,12 +78,8 @@ export const PracticeProvider = ({ children }) => {
       
       if (savedProgress) {
         const progressData = JSON.parse(savedProgress);
-        // Log resumido sin URLs largas
-        console.log(`📂 Progreso cargado - Partitura: ${partituraId.substring(0, 8)}... | Compás: ${progressData.currentCompas || 'N/A'}`);
         return progressData;
       }
-      
-      console.log(` No hay progreso guardado para partitura ${partituraId}`);
       return null;
     } catch (err) {
       console.error('Error cargando progreso:', err);
@@ -96,7 +91,6 @@ export const PracticeProvider = ({ children }) => {
   const getProgressSummary = useCallback(async (partituraId) => {
     try {
       const resumen = await getCompasesResumen(partituraId);
-      console.log(`Resumen de compases para ${partituraId}:`, resumen);
       return resumen;
     } catch (err) {
       console.error(' Error obteniendo resumen:', err);
@@ -109,7 +103,6 @@ export const PracticeProvider = ({ children }) => {
     try {
       const progressKey = `practice_progress_${partituraId}`;
       await AsyncStorage.removeItem(progressKey);
-      console.log(`Progreso eliminado para partitura ${partituraId}`);
     } catch (err) {
       console.error('Error limpiando progreso:', err);
     }
@@ -120,12 +113,9 @@ export const PracticeProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('Iniciando práctica para partitura:', partituraId);
-      console.log('Desde el principio:', fromBeginning);
       
       // Si es desde el inicio, limpiar progreso guardado
       if (fromBeginning) {
-        console.log('Limpiando progreso guardado...');
         await clearProgress(partituraId);
       }
       
@@ -134,7 +124,6 @@ export const PracticeProvider = ({ children }) => {
         const savedProgress = await loadProgress(partituraId);
         
         if (savedProgress && savedProgress.practice) {
-          console.log('Restaurando progreso guardado desde compás:', savedProgress.currentCompas);
           setCurrentPractice(savedProgress.practice);
           setCurrentCompas(savedProgress.currentCompas);
           setCurrentPartituraId(partituraId);
@@ -143,7 +132,6 @@ export const PracticeProvider = ({ children }) => {
       }
       
       // Si es desde inicio O no hay progreso guardado, iniciar desde cero
-      console.log('Iniciando desde compás 1 (sin llamar al backend todavía)');
       
       const initialPractice = {
         partitura_id: partituraId,
@@ -171,11 +159,9 @@ export const PracticeProvider = ({ children }) => {
     setError(null);
     try {
       if (currentPractice && currentPractice.partitura_id === partituraId) {
-        console.log(' Continuando práctica existente:', currentPractice);
         setCurrentCompas(currentPractice.state?.last_compas || currentPractice.current_compas);
         return currentPractice;
       } else {
-        console.log(' Iniciando nueva práctica para:', partituraId);
         return await startNewPractice(partituraId, false); // false = cargar progreso si existe
       }
     } catch (err) {
@@ -193,15 +179,11 @@ export const PracticeProvider = ({ children }) => {
       return;
     }
     
-    console.log('Iniciando avance a siguiente compás...');
-    console.log(' ID de partitura:', currentPartituraId);
-    
     setIsLoading(true);
     setError(null);
     
     try {
       const updatedPractice = await getNextCompas(currentPartituraId);
-      console.log('Siguiente compás obtenido:', updatedPractice);
       setCurrentPractice(updatedPractice);
       setCurrentCompas(updatedPractice.state.last_compas);
       // El progreso se guarda automáticamente por el useEffect
@@ -222,15 +204,11 @@ export const PracticeProvider = ({ children }) => {
       return;
     }
     
-    console.log('Iniciando retroceso a compás anterior...');
-    console.log('ID de partitura:', currentPartituraId);
-    
     setIsLoading(true);
     setError(null);
     
     try {
       const updatedPractice = await getPrevCompas(currentPartituraId);
-      console.log('Compás anterior obtenido:', updatedPractice);
       setCurrentPractice(updatedPractice);
       setCurrentCompas(updatedPractice.state.last_compas);
       // El progreso se guarda automáticamente por el useEffect
@@ -250,15 +228,11 @@ export const PracticeProvider = ({ children }) => {
       setError('No partitura ID available.');
       return;
     }
-    console.log('Iniciando repetición de compás...');
-    console.log('ID de partitura:', currentPartituraId);
-    console.log('Compás actual:', currentCompas);
     
     setIsLoading(true);
     setError(null);
     try {
       const updatedPractice = await repeatCompas(currentPartituraId);
-      console.log('Compás repetido, nueva práctica:', updatedPractice);
       setCurrentPractice(updatedPractice);
       setCurrentCompas(updatedPractice.state.last_compas);
       // El progreso se guarda automáticamente por el useEffect
@@ -285,29 +259,21 @@ export const PracticeProvider = ({ children }) => {
 
     // Verificar cache
     if (audioCache[cacheKey]) {
-      console.log('Audio desde cache:', cacheKey);
       return audioCache[cacheKey];
     }
 
     try {
-      console.log('Obteniendo audio TTS para compás:', compas);
-      console.log('Partitura ID:', id);
       setIsLoading(true);
       setError(null);
 
       // Llamar al endpoint POST /practice/{id}/start para generar los archivos
       const practiceResponse = await startPractice(id);
-      console.log('Archivos generados:', practiceResponse);
 
       // Obtener audio de instrucciones TTS usando función centralizada
-      console.log('Obteniendo audio TTS para compás:', compas);
       const ttsBlob = await getTTSAudio(id, compas);
-      console.log('Audio TTS obtenido:', ttsBlob);
 
       // Obtener audio del piano usando función centralizada
-      console.log('Obteniendo audio piano para compás:', compas);
       const pianoBlob = await getPianoAudio(id, compas);
-      console.log('Audio piano obtenido:', pianoBlob);
 
       const audioData = {
         ttsBlob: ttsBlob,
@@ -334,13 +300,11 @@ export const PracticeProvider = ({ children }) => {
 
   // Función para establecer el ID de la partitura actual
   const setPartituraId = useCallback((partituraId) => {
-    console.log('Estableciendo ID de partitura global:', partituraId);
     setCurrentPartituraId(partituraId);
   }, []);
 
   // Limpiar práctica y opcionalmente el progreso guardado
   const clearPractice = useCallback(async (alsoDeleteProgress = false) => {
-    console.log('Limpiando práctica');
     
     if (alsoDeleteProgress && currentPartituraId) {
       await clearProgress(currentPartituraId);
@@ -354,14 +318,12 @@ export const PracticeProvider = ({ children }) => {
   }, [currentPartituraId, clearProgress]);
 
   const clearAudioCache = useCallback(() => {
-    console.log('Limpiando cache de audio');
     setAudioCache({});
   }, []);
 
   //Función para reiniciar el progreso de una partitura
   const resetProgress = useCallback(async (partituraId) => {
     try {
-      console.log('Reiniciando progreso para partitura:', partituraId);
       await clearProgress(partituraId);
       
       // Si es la partitura actual, reiniciar también el estado
@@ -377,7 +339,6 @@ export const PracticeProvider = ({ children }) => {
         setCurrentCompas(1);
       }
       
-      console.log('Progreso reiniciado exitosamente');
     } catch (err) {
       console.error('Error reiniciando progreso:', err);
       throw err;

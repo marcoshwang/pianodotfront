@@ -405,8 +405,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       letterSpacing: 1,
       lineHeight: sizeConfig.buttonText * 1.2 * 1.2,
     },
-    
-    // ✅ ESTILOS CORREGIDOS PARA PROGRESO
+
     progressInfo: {
       backgroundColor: contrastConfig.backgroundColor,
       borderRadius: 16,
@@ -428,7 +427,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     },
     
     progressText: {
-      fontSize: 33, // Ahora usa tamaño dinámico
+      fontSize: 33, 
       fontFamily: 'Fredoka_700Bold',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
@@ -438,7 +437,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     },
     
     progressSubtext: {
-      fontSize: 18, // Ahora usa tamaño dinámico
+      fontSize: 18,
       fontFamily: 'Fredoka_400Regular',
       color: contrastConfig.subtitleColor,
       textAlign: 'center',
@@ -458,13 +457,13 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     actionButton: {
       backgroundColor: contrastConfig.buttonColor,
       borderRadius: 16,
-      paddingVertical: sizeConfig.buttonPadding * 2, // Ahora usa padding dinámico
+      paddingVertical: sizeConfig.buttonPadding * 2, 
       paddingHorizontal: 20,
       marginVertical: 12,
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
-      minHeight: sizeConfig.buttonPadding * 6, // Altura mínima dinámica
+      minHeight: sizeConfig.buttonPadding * 6,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -477,7 +476,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
     
     actionButtonText: {
       color: contrastConfig.textColor,
-      fontSize: sizeConfig.buttonText * 1.0, // Ahora usa tamaño dinámico
+      fontSize: sizeConfig.buttonText * 1.0,
       fontFamily: 'Fredoka_700Bold',
       textAlign: 'center',
       letterSpacing: 1.2,
@@ -730,7 +729,7 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       lineHeight: sizeConfig.buttonText * 2.5,
     },
     
-    // Estilos para nuevo botón independiente en WelcomeLandingScreen
+    // Estilos para botón en WelcomeLandingScreen
     newButtonContainer: {
       paddingHorizontal: 20,
       paddingBottom: 20,
@@ -1287,7 +1286,6 @@ export const getDynamicStyles = (sizeConfig, contrastConfig, currentTheme) => {
       letterSpacing: 0.5,
     },
 
-    // ✅ ESTILOS ADICIONALES PARA PROGRESO (otros contextos)
     progressContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',

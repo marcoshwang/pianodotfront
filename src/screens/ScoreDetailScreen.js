@@ -75,7 +75,7 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
       } 
       
       
-      // Obtener resumen del backend (compases visitados)
+      // Obtener resumen del backend
       const resumen = await getProgressSummary(score.id);
       
       // Combinar datos
@@ -96,7 +96,6 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
   // Navegar automáticamente cuando la partitura esté lista (solo si el popup está visible)
   useEffect(() => {
     if (showStatus && isReady) {
-      console.log('Partitura lista, navegando a Piano...');
       navigation.navigate('Piano', { score });
     }
   }, [showStatus, isReady, navigation, score]);
@@ -113,8 +112,6 @@ const ScoreDetailScreen = ({ navigation, route, styles, triggerVibration, stop }
     
     // Si la partitura ya está lista, establecer ID global y navegar
     if (isReady) {
-      console.log('🎵 Iniciando desde el principio...');
-      console.log('🎵 Estableciendo ID de partitura global:', score.id);
       setPartituraId(score.id);
       
       // Solo establecer el flag para iniciar desde el principio

@@ -69,8 +69,6 @@ const AuthScreen = ({ navigation, styles, triggerVibration, stop, settings }) =>
       if (error.isCancellation || 
           error.message?.toLowerCase().includes('cancel') ||
           error.message?.includes('cancelada por el usuario')) {
-        // Solo log en consola para debugging, sin mostrar alert al usuario
-        console.log('Autenticación con Google cancelada por el usuario');
         return;
       }
       
