@@ -33,6 +33,7 @@ import WelcomeLandingScreen from './src/screens/WelcomeLandingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import TutorialScreen from './src/screens/TutorialScreen';
 
 // Configurar Amplify con Cognito
 const configureAmplify = () => {
@@ -414,6 +415,9 @@ function PianoDotApp() {
           </Stack.Screen>
           <Stack.Screen name="Settings">
             {(props) => <SettingsScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} settings={settings} updateSetting={updateSetting} fontSizeConfig={fontSizeConfig} contrastConfig={contrastConfig} resetSettings={resetSettings} />}
+          </Stack.Screen>
+          <Stack.Screen name="Tutorial">
+            {(props) => <TutorialScreen {...props} styles={styles} triggerVibration={triggerVibration} stop={stop} />}
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
