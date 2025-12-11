@@ -97,6 +97,12 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       setCurrentKeyImage(null);
       processedEventsRef.current.clear();
       
+      // Delay inicial para que TalkBack termine su anuncio antes de reproducir el piano
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      if (!isMountedRef.current || isNavigatingAwayRef.current) return;
+      
+      // Reproducir audio del piano
       try {
         await playPreloadedAudio('Piano');
       } catch (error) {
@@ -105,8 +111,13 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
       
       if (!isMountedRef.current || isNavigatingAwayRef.current) return;
       
+      
+      if (!isMountedRef.current || isNavigatingAwayRef.current) return;
+      
       const startTime = Date.now();
       setAudioStartTime(startTime);
+      
+      // Reproducir audio TTS
       try {
         await playPreloadedAudio('TTS');
       } catch (error) {
@@ -399,8 +410,16 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
           showsVerticalScrollIndicator={true}
           showsHorizontalScrollIndicator={true}
         >
-          <View style={[styles.pianoContainer, { position: 'relative' }]}>
-            <View style={{ position: 'relative', width: '100%', flex: 1 }}>
+          <View 
+            style={[styles.pianoContainer, { position: 'relative' }]}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            <View 
+              style={{ position: 'relative', width: '100%', flex: 1 }}
+              accessible={false}
+              importantForAccessibility="no"
+            >
               {/* Piano base */}
               <Image
                 source={require('../../img/piano-stretched.png')}
@@ -412,7 +431,8 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
                   }
                 ]}
                 resizeMode="contain"
-                accessibilityLabel="Teclado de piano"
+                accessibilityLabel="Imagen de Piano"
+                accessibilityRole="none"
               />
               
               {/* Tecla iluminada superpuesta según mano (MD/MI) */}
@@ -440,7 +460,9 @@ const PianoScreen = ({ navigation, route, styles, triggerVibration, stop, settin
                       }
                     ]}
                     resizeMode="contain"
-                    accessibilityLabel="Tecla presionada"
+                    accessibilityLabel=""
+                    accessibilityRole="image"
+                    accessible={false}
                   />
                 </View>
               )}

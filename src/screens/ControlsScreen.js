@@ -11,7 +11,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePractice } from '../context/PracticeContext';
-import { startPractice } from '../../services/pianodotApi';
+import { startPractice, getPartituraPredicciones, getCompasesResumen } from '../../services/pianodotApi';
 import { getBaseURL } from '../../config/api.config';
 
 const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, settings, getCurrentSizeConfig, getCurrentContrastConfig }) => {
@@ -38,6 +38,7 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     currentPartituraId,
     setPartituraId,
     clearPractice,
+    loadProgress,
   } = usePractice();
 
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
@@ -45,14 +46,50 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [isLoadingPrev, setIsLoadingPrev] = useState(false);
   const [hasLoadedProgress, setHasLoadedProgress] = useState(false);
+  const [totalCompases, setTotalCompases] = useState(null);
 
-  // Establecer el ID de partitura al montar y resetear flag de carga
+  // Establecer el ID de partitura al montar
   useEffect(() => {
     if (score?.id) {
       setPartituraId(score.id);
-      setHasLoadedProgress(false);
+      // Solo resetear hasLoadedProgress si cambia el score.id, no al volver
+      // Esto preserva el estado cuando vuelves desde otra pantalla
+      if (currentPartituraId !== score.id) {
+        setHasLoadedProgress(false);
+      }
     }
-  }, [score?.id, setPartituraId]);
+  }, [score?.id, setPartituraId, currentPartituraId]);
+
+  // Obtener total de compases cuando se carga la partitura
+  useEffect(() => {
+    const loadTotalCompases = async () => {
+      if (!score?.id) return;
+      
+      try {
+        const predicciones = await getPartituraPredicciones(score.id);
+        let total = 0;
+        
+        if (predicciones?.predicciones && Array.isArray(predicciones.predicciones)) {
+          const compasesUnicos = [...new Set(predicciones.predicciones.map(evento => evento.compas))];
+          total = Math.max(...compasesUnicos, 0);
+        }
+        
+        if (total === 0) {
+          const resumen = await getCompasesResumen(score.id);
+          if (resumen?.total_compases) {
+            total = resumen.total_compases;
+          }
+        }
+        
+        setTotalCompases(total > 0 ? total : null);
+      } catch (error) {
+        console.error('Error obteniendo total de compases:', error);
+        setTotalCompases(null);
+      }
+    };
+
+    loadTotalCompases();
+  }, [score?.id]);
 
   // Cargar progreso automáticamente cuando se enfoca la pantalla
   useFocusEffect(
@@ -85,14 +122,23 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
         } else {
           const hasPracticeForThisScore = hasActivePractice && currentPartituraId === score.id;
           
+          // Solo cargar progreso si NO hay práctica activa para esta partitura
           if (!hasPracticeForThisScore) {
             try {
+              // Verificar si hay progreso guardado antes de iniciar nueva práctica
+              const savedProgress = await loadProgress(score.id);
+              
+              // Si hay progreso guardado con práctica, startNewPractice lo cargará
+              // Si no hay progreso, startNewPractice iniciará desde el principio
               await startNewPractice(score.id, false);
               setHasLoadedProgress(true);
             } catch (error) {
               console.error('Error cargando progreso automáticamente:', error);
+              setHasLoadedProgress(true); // Marcar como cargado para evitar loops
             }
           } else {
+            // Ya hay práctica activa para esta partitura, preservar el estado
+            // No hacer nada, solo marcar como cargado
             setHasLoadedProgress(true);
           }
         }
@@ -101,8 +147,9 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
       loadProgressOnFocus();
       
       return () => {
+        // No resetear hasLoadedProgress al desenfocar para preservar el estado
       };
-    }, [score?.id, hasActivePractice, currentPartituraId, startNewPractice, isPlaying, stopAudio, hasLoadedProgress])
+    }, [score?.id, hasActivePractice, currentPartituraId, startNewPractice, clearPractice, setPartituraId, hasLoadedProgress])
   );
 
   const handleGoBack = () => {
@@ -223,8 +270,11 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
 
       setIsLoadingNext(true);
       
+      // Intentar avanzar al siguiente compás
       const updatedPractice = await nextCompas();
-      const compasNumber = updatedPractice?.state?.last_compas || updatedPractice?.current_compas || 'N/A';
+      const newCompasNumber = updatedPractice?.state?.last_compas || updatedPractice?.current_compas;
+      
+      const compasNumber = newCompasNumber || 'N/A';
       
       let pianoUrl, ttsUrl;
       if (updatedPractice?.audio_piano && updatedPractice?.audio_tts) {
@@ -265,7 +315,17 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
     } catch (error) {
       console.error('Error avanzando compás:', error);
       setIsLoadingNext(false);
-      Alert.alert('Error', 'No se pudo avanzar al siguiente compás');
+      
+      const errorMessage = error?.message || '';
+      const isEndOfScore = 
+        errorMessage.includes('último') || 
+        errorMessage.includes('final') ||
+        errorMessage.includes('404') ||
+        error?.status === 404;
+      
+      if (!isEndOfScore) {
+        Alert.alert('Error', 'No se pudo avanzar al siguiente compás');
+      }
     }
   };
 
@@ -403,18 +463,22 @@ const ControlsScreen = ({ navigation, route, styles, triggerVibration, stop, set
               styles.controlButton,
               {
                 paddingVertical: getControlPadding(),
-                opacity: (isLoadingAudio || practiceLoading || !hasActivePractice || isLoadingNext || isLoadingRepeat || isLoadingPrev) ? 0.7 : 1,
+                opacity: (isLoadingAudio || practiceLoading || !hasActivePractice || isLoadingNext || isLoadingRepeat || isLoadingPrev || (totalCompases && currentCompas && currentCompas >= totalCompases)) ? 0.7 : 1,
               }
             ]}
             onPress={handleNextCompas}
-            disabled={isLoadingAudio || practiceLoading || !hasActivePractice || isLoadingNext || isLoadingRepeat || isLoadingPrev}
-            accessibilityLabel="Siguiente compás"
+            disabled={isLoadingAudio || practiceLoading || !hasActivePractice || isLoadingNext || isLoadingRepeat || isLoadingPrev || (totalCompases && currentCompas && currentCompas >= totalCompases)}
+            accessibilityLabel={totalCompases && currentCompas && currentCompas >= totalCompases ? "Partitura completada" : "Siguiente compás"}
             accessibilityRole="button"
           >
             {isLoadingNext ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.controlButtonText}>SIGUIENTE{'\n'}COMPÁS</Text>
+              <Text style={styles.controlButtonText}>
+                {totalCompases && currentCompas && currentCompas >= totalCompases 
+                  ? 'PARTITURA\nCOMPLETADA' 
+                  : 'SIGUIENTE\nCOMPÁS'}
+              </Text>
             )}
           </TouchableOpacity>
 

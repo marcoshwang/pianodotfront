@@ -374,6 +374,27 @@ const SettingsScreen = ({ navigation, styles, triggerVibration, stop, settings, 
           </View>
         </View>
 
+        {/* Sección de Tutorial */}
+        <View style={styles.settingsSection}>
+          <View style={{ justifyContent: 'center' }}>
+            <TouchableOpacity 
+              style={styles.optionButton}
+              onPress={() => {
+                triggerVibration();
+                navigation.navigate('Tutorial');
+              }}
+              disabled={isLoggingOut}
+              accessibilityLabel="Tutorial"
+              accessibilityRole="button"
+              accessibilityHint="Abrir el tutorial de la aplicación"
+            >
+              <Text style={styles.optionText}>
+                TUTORIAL
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Sección de Cerrar Sesión */}
         <View style={styles.settingsSection}>
           <View style={{ justifyContent: 'center' }}>

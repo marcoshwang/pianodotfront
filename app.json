@@ -16,14 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.marcoshw.pianodot"
+      "bundleIdentifier": "com.marcoshwang.pianodot"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.marcoshw.pianodot",
+      "package": "com.marcoshwang.pianodot",
       "versionCode": 1,
       "intentFilters": [
         {
@@ -45,11 +45,11 @@
     "web": {
       "favicon": "./assets/icon.png"
     },
+    "owner": "marcoshwang",
     "extra": {
       "eas": {
-        "projectId": "18bb58d1-7c56-4da6-9181-1b3e65c7b6cf"
+        "projectId": "1a473551-a25d-4744-8a15-43720cdccecd"
       }
-    },
-    "owner": "marcoshw"
+    }
   }
 }
